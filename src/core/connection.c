@@ -5611,7 +5611,7 @@ QuicConnRecvDatagramBatch(
                 if (QuicConnIsServer(Connection)) {
                     Path->SpinBit = Packet->SH->SpinBit;
                 } else {
-                    Path->SpinBit = !Packet->SH->SpinBit;
+                    Path->SpinBit = !Packet->SH->SpinBit; //Client spins
                 }
             }
         }
