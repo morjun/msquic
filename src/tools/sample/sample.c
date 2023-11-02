@@ -77,7 +77,7 @@ const uint64_t IdleTimeoutMs = 10000;
 //
 // The length of buffer sent over the streams in the protocol.
 //
-const uint32_t SendBufferLength = 10000;
+const uint32_t SendBufferLength = 100;
 
 //
 // The QUIC API/function table returned from MsQuicOpen2. It contains all the
@@ -664,15 +664,6 @@ ClientSend(
     // the buffer. This indicates this is the last buffer on the stream and the
     // the stream is shut down (in the send direction) immediately after.
     //
-    for (size_t i = 0; i < 100; i++)
-    {
-        if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, SendBuffer))) {
-            printf("StreamSend failed, 0x%x!\n", Status);
-            free(SendBufferRaw);
-            goto Error;
-        }
-    }
-    
     if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_FIN, SendBuffer))) {
         printf("StreamSend failed, 0x%x!\n", Status);
         free(SendBufferRaw);
