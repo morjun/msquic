@@ -219,6 +219,15 @@ ServerSend(
     // the stream is shut down (in the send direction) immediately after.
     //
     QUIC_STATUS Status;
+
+    for (size_t i = 0; i < 100; i++)
+    {
+        if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, SendBuffer))) {
+            printf("StreamSend failed, 0x%x!\n", Status);
+            free(SendBufferRaw);
+            MsQuic->StreamShutdown(Stream, QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
+        }
+    }
     if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_FIN, SendBuffer))) {
         printf("StreamSend failed, 0x%x!\n", Status);
         free(SendBufferRaw);
