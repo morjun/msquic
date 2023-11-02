@@ -220,7 +220,7 @@ ServerSend(
     //
     QUIC_STATUS Status;
 
-    for (size_t i = 0; i < 1; i++)
+    for (size_t i = 0; i < 10000; i++)
     {
         if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, NULL))) {
             printf("StreamSend failed, 0x%x!\n", Status);
