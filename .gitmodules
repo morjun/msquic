@@ -1,6 +1,3 @@
-[submodule "submodules/googletest"]
-	path = submodules/googletest
-	url = https://github.com/google/googletest
 [submodule "submodules/openssl"]
 	path = submodules/openssl
 	url = https://github.com/quictls/openssl.git
@@ -12,3 +9,7 @@
 [submodule "submodules/clog"]
 	path = submodules/clog
 	url = https://github.com/microsoft/CLOG.git
+[submodule "submodules/xdp-for-windows"]
+	path = submodules/xdp-for-windows
+	url = https://github.com/microsoft/xdp-for-windows.git
+	branch = release/1.0

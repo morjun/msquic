@@ -15,6 +15,14 @@ On Windows, MsQuic leverages manifested [ETW](https://docs.microsoft.com/en-us/w
 
 ### Linux
 
+#### stdout
+
+The easiest and quickest way to enable msquic logging is by compiling msquic with the following cmake arguments to direct the logs to standard output:
+
+```sh
+cmake -D QUIC_ENABLE_LOGGING=ON -D QUIC_LOGGING_TYPE=stdout ...
+```
+
 #### LTTng
 On Linux, MsQuic leverages [LTTng](https://lttng.org/features/) for its logging. Some dependencies, such as babeltrace, lttng, and clog2text_lttng are required. The simplest way to install all dependencies is by running `./scripts/prepare-machine.ps1 -ForTest`, but if you only want to collect the traces on the machine, the **minimal dependencies** are:
 
@@ -282,6 +290,7 @@ QUIC_PERF_COUNTER_PATH_VALIDATED | Total path challenges that succeed ever
 QUIC_PERF_COUNTER_PATH_FAILURE | Total path challenges that fail ever
 QUIC_PERF_COUNTER_SEND_STATELESS_RESET | Total stateless reset packets sent ever
 QUIC_PERF_COUNTER_SEND_STATELESS_RETRY | Total stateless retry packets sent ever
+QUIC_PERF_COUNTER_CONN_LOAD_REJECT | Total connections rejected due to worker load.
 
 ## Windows Performance Monitor
 

@@ -27,7 +27,7 @@ QuicStreamInitialize(
 {
     QUIC_STATUS Status;
     QUIC_STREAM* Stream;
-    uint8_t* PreallocatedRecvBuffer = NULL;
+    QUIC_RECV_CHUNK* PreallocatedRecvChunk = NULL;
     uint32_t InitialRecvBufferLength;
     QUIC_WORKER* Worker = Connection->Worker;
 
@@ -75,6 +75,12 @@ QuicStreamInitialize(
     QuicRangeInitialize(
         QUIC_MAX_RANGE_ALLOC_SIZE,
         &Stream->SparseAckRanges);
+    Stream->ReceiveCompleteOperation = &Stream->ReceiveCompleteOperationStorage;
+    Stream->ReceiveCompleteOperationStorage.API_CALL.Context = &Stream->ReceiveCompleteApiCtxStorage;
+    Stream->ReceiveCompleteOperation->Type = QUIC_OPER_TYPE_API_CALL;
+    Stream->ReceiveCompleteOperation->FreeAfterProcess = FALSE;
+    Stream->ReceiveCompleteOperation->API_CALL.Context->Type = QUIC_API_TYPE_STRM_RECV_COMPLETE;
+    Stream->ReceiveCompleteOperation->API_CALL.Context->STRM_RECV_COMPLETE.Stream = Stream;
 #if DEBUG
     Stream->RefTypeCount[QUIC_STREAM_REF_APP] = 1;
 #endif
@@ -107,8 +113,8 @@ QuicStreamInitialize(
 
     InitialRecvBufferLength = Connection->Settings.StreamRecvBufferDefault;
     if (InitialRecvBufferLength == QUIC_DEFAULT_STREAM_RECV_BUFFER_SIZE) {
-        PreallocatedRecvBuffer = CxPlatPoolAlloc(&Worker->DefaultReceiveBufferPool);
-        if (PreallocatedRecvBuffer == NULL) {
+        PreallocatedRecvChunk = CxPlatPoolAlloc(&Worker->DefaultReceiveBufferPool);
+        if (PreallocatedRecvChunk == NULL) {
             Status = QUIC_STATUS_OUT_OF_MEMORY;
             goto Exit;
         }
@@ -125,8 +131,8 @@ QuicStreamInitialize(
             &Stream->RecvBuffer,
             InitialRecvBufferLength,
             FlowControlWindowSize,
-            FALSE,
-            PreallocatedRecvBuffer);
+            QUIC_RECV_BUF_MODE_CIRCULAR,
+            PreallocatedRecvChunk);
     if (QUIC_FAILED(Status)) {
         goto Exit;
     }
@@ -139,7 +145,7 @@ QuicStreamInitialize(
     Stream->Flags.Initialized = TRUE;
     *NewStream = Stream;
     Stream = NULL;
-    PreallocatedRecvBuffer = NULL;
+    PreallocatedRecvChunk = NULL;
 
 Exit:
 
@@ -154,8 +160,8 @@ Exit:
         Stream->Flags.Freed = TRUE;
         CxPlatPoolFree(&Worker->StreamPool, Stream);
     }
-    if (PreallocatedRecvBuffer) {
-        CxPlatPoolFree(&Worker->DefaultReceiveBufferPool, PreallocatedRecvBuffer);
+    if (PreallocatedRecvChunk) {
+        CxPlatPoolFree(&Worker->DefaultReceiveBufferPool, PreallocatedRecvChunk);
     }
 
     return Status;
@@ -195,14 +201,10 @@ QuicStreamFree(
     CxPlatDispatchLockUninitialize(&Stream->ApiSendRequestLock);
     CxPlatRefUninitialize(&Stream->RefCount);
 
-    if (Stream->ReceiveCompleteOperation) {
-        QuicOperationFree(Worker, Stream->ReceiveCompleteOperation);
-    }
-
-    if (Stream->RecvBuffer.PreallocatedBuffer) {
+    if (Stream->RecvBuffer.PreallocatedChunk) {
         CxPlatPoolFree(
             &Worker->DefaultReceiveBufferPool,
-            Stream->RecvBuffer.PreallocatedBuffer);
+            Stream->RecvBuffer.PreallocatedChunk);
     }
 
     Stream->Flags.Freed = TRUE;
@@ -274,24 +276,24 @@ QuicStreamStart(
     uint64_t Now = CxPlatTimeUs64();
     Stream->BlockedTimings.CachedConnSchedulingUs =
         Stream->Connection->BlockedTimings.Scheduling.CumulativeTimeUs +
-        Stream->Connection->BlockedTimings.Scheduling.LastStartTimeUs != 0 ?
-            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.Scheduling.LastStartTimeUs, Now) : 0;
+        (Stream->Connection->BlockedTimings.Scheduling.LastStartTimeUs != 0 ?
+            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.Scheduling.LastStartTimeUs, Now) : 0);
     Stream->BlockedTimings.CachedConnPacingUs =
         Stream->Connection->BlockedTimings.Pacing.CumulativeTimeUs +
-        Stream->Connection->BlockedTimings.Pacing.LastStartTimeUs != 0 ?
-        CxPlatTimeDiff64(Stream->Connection->BlockedTimings.Pacing.LastStartTimeUs, Now) : 0;
+        (Stream->Connection->BlockedTimings.Pacing.LastStartTimeUs != 0 ?
+            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.Pacing.LastStartTimeUs, Now) : 0);
     Stream->BlockedTimings.CachedConnAmplificationProtUs =
         Stream->Connection->BlockedTimings.AmplificationProt.CumulativeTimeUs +
-        Stream->Connection->BlockedTimings.AmplificationProt.LastStartTimeUs != 0 ?
-        CxPlatTimeDiff64(Stream->Connection->BlockedTimings.AmplificationProt.LastStartTimeUs, Now) : 0;
+        (Stream->Connection->BlockedTimings.AmplificationProt.LastStartTimeUs != 0 ?
+            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.AmplificationProt.LastStartTimeUs, Now) : 0);
     Stream->BlockedTimings.CachedConnCongestionControlUs =
         Stream->Connection->BlockedTimings.CongestionControl.CumulativeTimeUs +
-        Stream->Connection->BlockedTimings.CongestionControl.LastStartTimeUs != 0 ?
-        CxPlatTimeDiff64(Stream->Connection->BlockedTimings.CongestionControl.LastStartTimeUs, Now) : 0;
+        (Stream->Connection->BlockedTimings.CongestionControl.LastStartTimeUs != 0 ?
+            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.CongestionControl.LastStartTimeUs, Now) : 0);
     Stream->BlockedTimings.CachedConnFlowControlUs =
         Stream->Connection->BlockedTimings.FlowControl.CumulativeTimeUs +
-        Stream->Connection->BlockedTimings.FlowControl.LastStartTimeUs != 0 ?
-        CxPlatTimeDiff64(Stream->Connection->BlockedTimings.FlowControl.LastStartTimeUs, Now) : 0;
+        (Stream->Connection->BlockedTimings.FlowControl.LastStartTimeUs != 0 ?
+            CxPlatTimeDiff64(Stream->Connection->BlockedTimings.FlowControl.LastStartTimeUs, Now) : 0);
 
     QuicTraceEvent(
         StreamCreated,
@@ -530,7 +532,7 @@ QuicStreamIndicateShutdownComplete(
         QuicTraceLogStreamVerbose(
             IndicateStreamShutdownComplete,
             Stream,
-            "Indicating QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE [ConnectionShutdown=%hhu, ConnectionShutdownByApp=%hhu, ConnectionClosedRemotely=%hhu, ConnectionErrorCode=0x%llx, ConnectionCloseStatus=0x%x]",
+            "Indicating QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE [Shutdown=%hhu, ShutdownByApp=%hhu, ClosedRemotely=%hhu, ErrorCode=0x%llx, CloseStatus=0x%x]",
             Event.SHUTDOWN_COMPLETE.ConnectionShutdown,
             Event.SHUTDOWN_COMPLETE.ConnectionShutdownByApp,
             Event.SHUTDOWN_COMPLETE.ConnectionClosedRemotely,

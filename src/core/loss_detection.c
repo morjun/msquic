@@ -608,6 +608,8 @@ QuicLossDetectionOnPacketAcknowledged(
                 CXPLAT_DBG_ASSERT(DestCid->CID.Retired);
                 CXPLAT_DBG_ASSERT(Path == NULL || Path->DestCid != DestCid);
                 QUIC_CID_VALIDATE_NULL(Connection, DestCid);
+                CXPLAT_DBG_ASSERT(Connection->RetiredDestCidCount > 0);
+                Connection->RetiredDestCidCount--;
                 CXPLAT_FREE(DestCid, QUIC_POOL_CIDLIST);
             }
             break;
@@ -1584,7 +1586,7 @@ QuicLossDetectionProcessAckBlocks(
 
         //
         // Handle packet loss (and any possible congestion events) before
-        // data acknowledgement so that we have an accurate bytes in flight
+        // data acknowledgment so that we have an accurate bytes in flight
         // calculation for congestion events.
         //
         QuicLossDetectionDetectAndHandleLostPackets(LossDetection, TimeNow);

@@ -129,7 +129,7 @@ QuicLibraryInitializePartitions(
 {
     CXPLAT_DBG_ASSERT(MsQuicLib.PerProc == NULL);
 
-    MsQuicLib.ProcessorCount = (uint16_t)CxPlatProcMaxCount();
+    MsQuicLib.ProcessorCount = (uint16_t)CxPlatProcCount();
     CXPLAT_FRE_ASSERT(MsQuicLib.ProcessorCount > 0);
 
     if (MsQuicLib.ExecutionConfig && MsQuicLib.ExecutionConfig->ProcessorCount) {
@@ -265,7 +265,7 @@ QuicPerfCounterSnapShot(
     QuicTraceEvent(
         PerfCountersRundown,
         "[ lib] Perf counters Rundown, Counters=%!CID!",
-        CASTED_CLOG_BYTEARRAY(sizeof(PerfCounterSamples), PerfCounterSamples));
+        CASTED_CLOG_BYTEARRAY16(sizeof(PerfCounterSamples), PerfCounterSamples));
 
 // Ensure a perf counter stays below a given max Hz/frequency.
 #define QUIC_COUNTER_LIMIT_HZ(TYPE, LIMIT_PER_SECOND) \
@@ -856,6 +856,9 @@ QuicLibrarySetGlobalParam(
 
         MsQuicLib.Settings.LoadBalancingMode = *(uint16_t*)Buffer;
         MsQuicLib.Settings.IsSet.LoadBalancingMode = TRUE;
+
+        QuicLibApplyLoadBalancingSetting();
+
         QuicTraceLogInfo(
             LibraryLoadBalancingModeSet,
             "[ lib] Updated load balancing mode = %hu",
@@ -992,7 +995,7 @@ QuicLibrarySetGlobalParam(
         }
 
         for (uint32_t i = 0; i < Config->ProcessorCount; ++i) {
-            if (Config->ProcessorList[i] >= CxPlatProcMaxCount()) {
+            if (Config->ProcessorList[i] >= CxPlatProcCount()) {
                 return QUIC_STATUS_INVALID_PARAMETER;
             }
         }
@@ -2267,7 +2270,7 @@ QuicTraceRundown(
         QuicTraceEvent(
             PerfCountersRundown,
             "[ lib] Perf counters Rundown, Counters=%!CID!",
-            CASTED_CLOG_BYTEARRAY(sizeof(PerfCounters), PerfCounters));
+            CASTED_CLOG_BYTEARRAY16(sizeof(PerfCounters), PerfCounters));
     }
 
     CxPlatLockRelease(&MsQuicLib.Lock);

@@ -221,7 +221,7 @@ QuicTestConnect(
     }
 
     StatelessRetryHelper RetryHelper(ServerStatelessRetry);
-    PrivateTransportHelper TpHelper(MultiPacketClientInitial);
+    PrivateTransportHelper TpHelper(MultiPacketClientInitial, !!ResumptionTicket);
     RandomLossHelper LossHelper(RandomLossPercentage);
 
     {
@@ -369,6 +369,13 @@ QuicTestConnect(
                         ServerSecrets.ServerTrafficSecret0,
                         ClientSecrets.ServerTrafficSecret0,
                         ServerSecrets.SecretLength));
+
+                uint8_t ClientOrigCid[32], ServerOrigCid[32];
+                uint32_t ClientOrigCidLen, ServerOrigCidLen;
+                TEST_QUIC_SUCCEEDED(Client.GetOrigDestCid(ClientOrigCid, ClientOrigCidLen));
+                TEST_QUIC_SUCCEEDED(Server->GetOrigDestCid(ServerOrigCid, ServerOrigCidLen));
+                TEST_EQUAL(ClientOrigCidLen, ServerOrigCidLen);
+                TEST_TRUE(!memcmp(ClientOrigCid, ServerOrigCid, ClientOrigCidLen));
 
                 if (ClientUsesOldVersion) {
                     TEST_EQUAL(Server->GetQuicVersion(), OLD_SUPPORTED_VERSION);
@@ -878,13 +885,11 @@ QuicTestCustomServerCertificateValidation(
                 }
                 TEST_EQUAL(AcceptCert, Client.GetIsConnected());
 
-                if (AcceptCert) { // Server will be deleted on reject case, so can't validate.
-                    TEST_NOT_EQUAL(nullptr, Server);
-                    if (!Server->WaitForConnectionComplete()) {
-                        return;
-                    }
-                    TEST_TRUE(Server->GetIsConnected());
+                TEST_NOT_EQUAL(nullptr, Server);
+                if (!Server->WaitForConnectionComplete()) {
+                    return;
                 }
+                TEST_EQUAL(AcceptCert, Server->GetIsConnected());
             }
         }
     }
@@ -991,16 +996,15 @@ QuicTestCustomClientCertificateValidation(
                 if (!Client.WaitForConnectionComplete()) {
                     return;
                 }
-
-                if (AcceptCert) { // Server will be deleted on reject case, so can't validate.
-                    TEST_NOT_EQUAL(nullptr, Server);
-                    if (!Server->WaitForConnectionComplete()) {
-                        return;
-                    }
-                    TEST_TRUE(Server->GetIsConnected());
-                }
                 // In all cases, the client "connects", but in the rejection case, it gets disconnected.
                 TEST_TRUE(Client.GetIsConnected());
+
+                TEST_NOT_EQUAL(nullptr, Server);
+                if (!Server->WaitForConnectionComplete()) {
+                    return;
+                }
+
+                TEST_EQUAL(AcceptCert, Server->GetIsConnected());
             }
         }
     }

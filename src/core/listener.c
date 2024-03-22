@@ -670,7 +670,9 @@ QuicListenerClaimConnection(
         Connection->ClientCallbackHandler != NULL,
         "App MUST set callback handler or close connection!");
 
-    Connection->State.UpdateWorker = TRUE;
+    if (!Connection->State.ShutdownComplete) {
+        Connection->State.UpdateWorker = TRUE;
+    }
 
     return !Connection->State.HandleClosed;
 }
@@ -695,6 +697,7 @@ QuicListenerAcceptConnection(
             Connection,
             QUIC_ERROR_CONNECTION_REFUSED);
         Listener->TotalRejectedConnections++;
+        QuicPerfCounterIncrement(QUIC_PERF_COUNTER_CONN_LOAD_REJECT);
         return;
     }
 

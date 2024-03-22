@@ -173,17 +173,19 @@ class SpinQuicWatchdog {
     CXPLAT_THREAD WatchdogThread;
     CXPLAT_EVENT ShutdownEvent;
     uint32_t TimeoutMs;
+    CXPLAT_THREAD_ID OriginThread;
     static
     CXPLAT_THREAD_CALLBACK(WatchdogThreadCallback, Context) {
         auto This = (SpinQuicWatchdog*)Context;
         if (!CxPlatEventWaitWithTimeout(This->ShutdownEvent, This->TimeoutMs)) {
-            printf("Watchdog timeout fired!\n");
+            printf("Watchdog timeout fired while waiting on thread 0x%x!\n", (int)This->OriginThread);
             CXPLAT_FRE_ASSERTMSG(FALSE, "Watchdog timeout fired!");
         }
         CXPLAT_THREAD_RETURN(0);
     }
 public:
-    SpinQuicWatchdog(uint32_t WatchdogTimeoutMs) : TimeoutMs(WatchdogTimeoutMs) {
+    SpinQuicWatchdog(uint32_t WatchdogTimeoutMs) :
+        TimeoutMs(WatchdogTimeoutMs), OriginThread(CxPlatCurThreadID()) {
         CxPlatEventInitialize(&ShutdownEvent, TRUE, FALSE);
         CXPLAT_THREAD_CONFIG Config = { 0 };
         Config.Name = "spin_watchdog";
@@ -371,6 +373,9 @@ QUIC_STATUS QUIC_API SpinQuicHandleStreamEvent(HQUIC Stream, void* , QUIC_STREAM
     switch (Event->Type) {
     case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
         MsQuic.StreamShutdown(Stream, (QUIC_STREAM_SHUTDOWN_FLAGS)GetRandom(16), 0);
+        break;
+    case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
+        ctx->PendingRecvLength = 0;
         break;
     case QUIC_STREAM_EVENT_RECEIVE: {
         int Random = GetRandom(5);
@@ -995,7 +1000,12 @@ void Spin(Gbs& Gb, LockableVector<HQUIC>& Connections, std::vector<HQUIC>* Liste
                 std::lock_guard<std::mutex> Lock(ctx->Lock);
                 auto Stream = ctx->TryGetStream();
                 if (Stream == nullptr) continue;
-                MsQuic.StreamShutdown(Stream, (QUIC_STREAM_SHUTDOWN_FLAGS)GetRandom(16), 0);
+                auto Flags = (QUIC_STREAM_SHUTDOWN_FLAGS)GetRandom(16);
+                if (Flags & QUIC_STREAM_SHUTDOWN_FLAG_ABORT_RECEIVE) {
+                    auto StreamCtx = SpinQuicStream::Get(Stream);
+                    StreamCtx->PendingRecvLength = 0;
+                }
+                MsQuic.StreamShutdown(Stream, Flags, 0);
             }
             break;
         }
@@ -1483,9 +1493,9 @@ void start() {
 
         if (GetRandom(2) == 0) {
             const uint32_t ProcCount =
-                CxPlatProcMaxCount() == 1 ?
+                CxPlatProcCount() == 1 ?
                     1 :
-                    1 + GetRandom(CxPlatProcMaxCount() - 1);
+                    1 + GetRandom(CxPlatProcCount() - 1);
             printf("Using %u partitions...\n", ProcCount);
             ExecConfigSize = QUIC_EXECUTION_CONFIG_MIN_SIZE + sizeof(uint16_t)*ProcCount;
             ExecConfig = (QUIC_EXECUTION_CONFIG*)malloc(ExecConfigSize);
