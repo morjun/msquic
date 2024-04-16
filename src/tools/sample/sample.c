@@ -222,7 +222,7 @@ ServerSend(
 
     for (size_t i = 0; i < 10000; i++)
     {
-        if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, SendBuffer))) {
+        if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, NULL))) {
             printf("StreamSend failed, 0x%x!\n", Status);
             free(SendBufferRaw);
             MsQuic->StreamShutdown(Stream, QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
