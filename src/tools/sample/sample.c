@@ -220,16 +220,16 @@ ServerSend(
     //
     QUIC_STATUS Status;
 
-    for (size_t i = 0; i < 10000; i++)
-    {
-        if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, NULL))) {
-            printf("StreamSend failed, 0x%x!\n", Status);
-            free(SendBufferRaw);
-            MsQuic->StreamShutdown(Stream, QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
-        }
-        printf("Sent %d bytes\n", SendBufferLength);
-    }
-    if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_FIN, SendBuffer))) {
+    // for (size_t i = 0; i < 10000; i++)
+    // {
+    //     if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 1, QUIC_SEND_FLAG_NONE, NULL))) {
+    //         printf("StreamSend failed, 0x%x!\n", Status);
+    //         free(SendBufferRaw);
+    //         MsQuic->StreamShutdown(Stream, QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
+    //     }
+    //     printf("Sent %d bytes\n", SendBufferLength);
+    // }
+    if (QUIC_FAILED(Status = MsQuic->StreamSend(Stream, SendBuffer, 10000, QUIC_SEND_FLAG_FIN, SendBuffer))) {
         printf("StreamSend failed, 0x%x!\n", Status);
         free(SendBufferRaw);
         MsQuic->StreamShutdown(Stream, QUIC_STREAM_SHUTDOWN_FLAG_ABORT, 0);
