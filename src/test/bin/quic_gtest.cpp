@@ -21,6 +21,7 @@
 bool TestingKernelMode = false;
 bool PrivateTestLibrary = false;
 bool UseDuoNic = false;
+CXPLAT_WORKER_POOL WorkerPool;
 #if defined(QUIC_API_ENABLE_PREVIEW_FEATURES)
 bool UseQTIP = false;
 #endif
@@ -44,6 +45,7 @@ public:
     void SetUp() override {
         CxPlatSystemLoad();
         ASSERT_TRUE(QUIC_SUCCEEDED(CxPlatInitialize()));
+        CxPlatWorkerPoolInit(&WorkerPool);
         watchdog = new CxPlatWatchdog(Timeout);
         ASSERT_TRUE((SelfSignedCertParams =
             CxPlatGetSelfSignedCert(
@@ -89,6 +91,12 @@ public:
             QUIC_TEST_CONFIGURATION_PARAMS Params {
                 UseDuoNic,
             };
+
+#ifdef _WIN32
+            ASSERT_NE(GetCurrentDirectoryA(sizeof(Params.CurrentDirectory), Params.CurrentDirectory), 0);
+            strcat_s(Params.CurrentDirectory, "\\");
+#endif
+
             ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_TEST_CONFIGURATION, Params));
 
         } else {
@@ -96,8 +104,13 @@ public:
             MsQuic = new(std::nothrow) MsQuicApi();
             ASSERT_TRUE(QUIC_SUCCEEDED(MsQuic->GetInitStatus()));
 #if defined(QUIC_API_ENABLE_PREVIEW_FEATURES)
+            QUIC_EXECUTION_CONFIG Config = {QUIC_EXECUTION_CONFIG_FLAG_NONE, 0, 0, {0}};
             if (UseQTIP) {
-                QUIC_EXECUTION_CONFIG Config = {QUIC_EXECUTION_CONFIG_FLAG_QTIP, 10000, 0, {0}};
+                Config.PollingIdleTimeoutUs = 10000;
+                Config.Flags |= QUIC_EXECUTION_CONFIG_FLAG_QTIP;
+            }
+            Config.Flags |= UseDuoNic ? QUIC_EXECUTION_CONFIG_FLAG_XDP : QUIC_EXECUTION_CONFIG_FLAG_NONE;
+            if (Config.Flags != QUIC_EXECUTION_CONFIG_FLAG_NONE) {
                 ASSERT_TRUE(QUIC_SUCCEEDED(
                     MsQuic->SetParam(
                         nullptr,
@@ -115,6 +128,12 @@ public:
             memcpy(&ClientCertCredConfig, ClientCertParams, sizeof(QUIC_CREDENTIAL_CONFIG));
             ClientCertCredConfig.Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
             QuicTestInitialize();
+
+#ifdef _WIN32
+            ASSERT_NE(GetCurrentDirectoryA(sizeof(CurrentWorkingDirectory), CurrentWorkingDirectory), 0);
+#else
+            ASSERT_NE(getcwd(CurrentWorkingDirectory, sizeof(CurrentWorkingDirectory)), nullptr);
+#endif
         }
     }
     void TearDown() override {
@@ -128,6 +147,7 @@ public:
         CxPlatFreeSelfSignedCert(SelfSignedCertParams);
         CxPlatFreeSelfSignedCert(ClientCertParams);
 
+        CxPlatWorkerPoolUninit(&WorkerPool);
         CxPlatUninitialize();
         CxPlatSystemUnload();
         delete watchdog;
@@ -275,6 +295,17 @@ TEST(ParameterValidation, ValidateTlsParam) {
         ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_VALIDATE_TLS_PARAM));
     } else {
         QuicTestTlsParam();
+    }
+}
+
+TEST_P(WithBool, ValidateTlsHandshakeInfo) {
+    TestLoggerT<ParamType> Logger("QuicTestValidateTlsHandshakeInfo", GetParam());
+    if (TestingKernelMode) {
+        if (IsWindows2022() || IsWindows2019()) GTEST_SKIP(); // Not supported on WS2019 or WS2022
+        uint8_t EnableResumption = (uint8_t)GetParam();
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_VALIDATE_TLS_HANDSHAKE_INFO, EnableResumption));
+    } else {
+        QuicTestTlsHandshakeInfo(GetParam());
     }
 }
 
@@ -1586,7 +1617,7 @@ TEST_P(WithFamilyArgs, RebindAddr) {
 
 TEST_P(WithFamilyArgs, RebindDatapathAddr) {
 #if defined(QUIC_API_ENABLE_PREVIEW_FEATURES)
-    if (UseQTIP) {
+    if (UseQTIP || !UseDuoNic) {
         //
         // NAT rebind doesn't make sense for TCP and QTIP.
         //
@@ -1665,6 +1696,15 @@ TEST_P(WithHandshakeArgs10, HandshakeSpecificLossPatterns) {
     }
 }
 #endif // QUIC_TEST_DATAPATH_HOOKS_ENABLED
+
+TEST_P(WithHandshakeArgs11, ShutdownDuringHandshake) {
+    TestLoggerT<ParamType> Logger("QuicTestShutdownDuringHandshake", GetParam());
+    if (TestingKernelMode) {
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_HANDSHAKE_SHUTDOWN, GetParam().ClientShutdown ? TRUE : FALSE));
+    } else {
+        QuicTestShutdownDuringHandshake(GetParam().ClientShutdown);
+    }
+}
 
 TEST_P(WithSendArgs1, Send) {
     TestLoggerT<ParamType> Logger("QuicTestConnectAndPing", GetParam());
@@ -2112,6 +2152,17 @@ TEST(Misc, NthAllocFail) {
 #endif // QUIC_TEST_OPENSSL_FLAGS
 #endif // QUIC_TEST_ALLOC_FAILURES_ENABLED
 
+#if QUIC_TEST_DATAPATH_HOOKS_ENABLED
+TEST(Misc, NthPacketDrop) {
+    TestLogger Logger("NthPacketDrop");
+    if (TestingKernelMode) {
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_NTH_PACKET_DROP));
+    } else {
+        QuicTestNthPacketDrop();
+    }
+}
+#endif // QUIC_TEST_DATAPATH_HOOKS_ENABLED
+
 TEST(Misc, StreamPriority) {
     TestLogger Logger("StreamPriority");
     if (TestingKernelMode) {
@@ -2177,6 +2228,18 @@ TEST(Misc, StreamReliableResetMultipleSends) {
 }
 #endif // QUIC_PARAM_STREAM_RELIABLE_OFFSET
 
+#ifdef QUIC_API_ENABLE_PREVIEW_FEATURES
+TEST(Misc, StreamMultiReceive) {
+    TestLogger Logger("StreamMultiReceive");
+    if (TestingKernelMode) {
+        GTEST_SKIP();
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_STREAM_MULTI_RECEIVE));
+    } else {
+        QuicTestStreamMultiReceive();
+    }
+}
+#endif // QUIC_API_ENABLE_PREVIEW_FEATURES
+
 TEST(Misc, StreamBlockUnblockUnidiConnFlowControl) {
     TestLogger Logger("StreamBlockUnblockUnidiConnFlowControl");
     if (TestingKernelMode) {
@@ -2192,6 +2255,24 @@ TEST(Misc, StreamAbortConnFlowControl) {
         ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_STREAM_ABORT_CONN_FLOW_CONTROL));
     } else {
         QuicTestStreamAbortConnFlowControl();
+    }
+}
+
+TEST(Basic, OperationPriority) {
+    TestLogger Logger("OperationPriority");
+    if (TestingKernelMode) {
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_OPERATION_PRIORITY));
+    } else {
+        QuicTestOperationPriority();
+    }
+}
+
+TEST(Basic, ConnectionPriority) {
+    TestLogger Logger("ConnectionPriority");
+    if (TestingKernelMode) {
+        ASSERT_TRUE(DriverClient.Run(IOCTL_QUIC_RUN_CONNECTION_PRIORITY));
+    } else {
+        QuicTestConnectionPriority();
     }
 }
 
@@ -2420,6 +2501,11 @@ INSTANTIATE_TEST_SUITE_P(
     WithHandshakeArgs10,
     testing::ValuesIn(HandshakeArgs10::Generate()));
 #endif
+
+INSTANTIATE_TEST_SUITE_P(
+    Handshake,
+    WithHandshakeArgs11,
+    testing::ValuesIn(HandshakeArgs11::Generate()));
 
 INSTANTIATE_TEST_SUITE_P(
     AppData,

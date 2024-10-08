@@ -56,6 +56,11 @@ typedef struct CXPLAT_DATAPATH_COMMON {
     // The TCP callback function pointers.
     //
     CXPLAT_TCP_DATAPATH_CALLBACKS TcpHandlers;
+
+    //
+    // The Worker WorkerPool
+    //
+    CXPLAT_WORKER_POOL* WorkerPool;
 } CXPLAT_DATAPATH_COMMON;
 
 typedef struct CXPLAT_SOCKET_COMMON {
@@ -125,6 +130,8 @@ typedef enum CXPLAT_SOCKET_TYPE {
     CXPLAT_SOCKET_TCP             = 2,
     CXPLAT_SOCKET_TCP_SERVER      = 3
 } CXPLAT_SOCKET_TYPE;
+
+#define DatapathType(SendData) ((CXPLAT_SEND_DATA_COMMON*)(SendData))->DatapathType
 
 #ifdef _KERNEL_MODE
 
@@ -258,7 +265,7 @@ typedef struct QUIC_CACHEALIGN CXPLAT_DATAPATH_PROC {
     // Pool of receive datagram contexts and buffers to be shared by all sockets
     // on this core.
     //
-    CXPLAT_POOL RecvDatagramPool;
+    CXPLAT_POOL_EX RecvDatagramPool;
 
     //
     // Pool of RIO receive datagram contexts and buffers to be shared by all
@@ -523,6 +530,11 @@ typedef struct CXPLAT_SOCKET {
 
 } CXPLAT_SOCKET;
 
+#define IS_LOOPBACK(Address) ((Address.si_family == QUIC_ADDRESS_FAMILY_INET &&                \
+                               Address.Ipv4.sin_addr.S_un.S_addr == htonl(INADDR_LOOPBACK)) || \
+                              (Address.si_family == QUIC_ADDRESS_FAMILY_INET6 &&               \
+                               IN6_IS_ADDR_LOOPBACK(&Address.Ipv6.sin6_addr)))
+
 #elif defined(CX_PLATFORM_LINUX) || defined(CX_PLATFORM_DARWIN)
 
 typedef struct CX_PLATFORM {
@@ -543,6 +555,11 @@ typedef struct CX_PLATFORM {
 #endif
 
 } CX_PLATFORM;
+
+#define IS_LOOPBACK(Address) ((Address.Ip.sa_family == QUIC_ADDRESS_FAMILY_INET &&        \
+                               Address.Ipv4.sin_addr.s_addr == htonl(INADDR_LOOPBACK)) || \
+                              (Address.Ip.sa_family == QUIC_ADDRESS_FAMILY_INET6 &&       \
+                               IN6_IS_ADDR_LOOPBACK(&Address.Ipv6.sin6_addr)))
 
 #else
 
@@ -631,25 +648,17 @@ CxPlatCryptUninitialize(
 
 //
 // Platform Worker APIs
-//
-
-void
-CxPlatWorkersInit(
-    void
-    );
-
-void
-CxPlatWorkersUninit(
-    void
-    );
+// 
 
 BOOLEAN
-CxPlatWorkersLazyStart(
+CxPlatWorkerPoolLazyStart(
+    _In_ CXPLAT_WORKER_POOL* WorkerPool,
     _In_opt_ QUIC_EXECUTION_CONFIG* Config
     );
 
 CXPLAT_EVENTQ*
-CxPlatWorkerGetEventQ(
+CxPlatWorkerPoolGetEventQ(
+    _In_ const CXPLAT_WORKER_POOL* WorkerPool,
     _In_ uint16_t Index // Into the config processor array
     );
 
@@ -679,8 +688,9 @@ CxPlatDpRawGetDatapathSize(
 #define CXPLAT_CQE_TYPE_SOCKET_SHUTDOWN     CXPLAT_CQE_TYPE_QUIC_BASE + 3
 #define CXPLAT_CQE_TYPE_SOCKET_IO           CXPLAT_CQE_TYPE_QUIC_BASE + 4
 #define CXPLAT_CQE_TYPE_SOCKET_FLUSH_TX     CXPLAT_CQE_TYPE_QUIC_BASE + 5
-
-extern CXPLAT_RUNDOWN_REF CxPlatWorkerRundown;
+#define CXPLAT_CQE_TYPE_XDP_SHUTDOWN        CXPLAT_CQE_TYPE_QUIC_BASE + 6
+#define CXPLAT_CQE_TYPE_XDP_IO              CXPLAT_CQE_TYPE_QUIC_BASE + 7
+#define CXPLAT_CQE_TYPE_XDP_FLUSH_TX        CXPLAT_CQE_TYPE_QUIC_BASE + 8
 
 #if defined(CX_PLATFORM_LINUX)
 
@@ -824,6 +834,8 @@ typedef struct CXPLAT_SOCKET {
 
     uint8_t UseTcp : 1;                  // Quic over TCP
 
+    uint8_t RawSocketAvailable : 1;
+
     //
     // Set of socket contexts one per proc.
     //
@@ -932,6 +944,10 @@ typedef struct CXPLAT_DATAPATH {
     uint8_t Freed : 1;
 #endif
 
+    uint8_t UseTcp : 1;
+
+    CXPLAT_DATAPATH_RAW* RawDataPath;
+
     //
     // The per proc datapath contexts.
     //
@@ -984,6 +1000,7 @@ DataPathInitialize(
     _In_ uint32_t ClientRecvDataLength,
     _In_opt_ const CXPLAT_UDP_DATAPATH_CALLBACKS* UdpCallbacks,
     _In_opt_ const CXPLAT_TCP_DATAPATH_CALLBACKS* TcpCallbacks,
+    _In_ CXPLAT_WORKER_POOL* WorkerPool,
     _In_opt_ QUIC_EXECUTION_CONFIG* Config,
     _Out_ CXPLAT_DATAPATH** NewDatapath
     );
@@ -1055,7 +1072,7 @@ SendDataIsFull(
     );
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
-QUIC_STATUS
+void
 SocketSend(
     _In_ CXPLAT_SOCKET* Socket,
     _In_ const CXPLAT_ROUTE* Route,
@@ -1100,6 +1117,7 @@ RawDataPathInitialize(
     _In_ uint32_t ClientRecvContextLength,
     _In_opt_ QUIC_EXECUTION_CONFIG* Config,
     _In_opt_ const CXPLAT_DATAPATH* ParentDataPath,
+    _In_ CXPLAT_WORKER_POOL* WorkerPool,
     _Out_ CXPLAT_DATAPATH_RAW** DataPath
     );
 

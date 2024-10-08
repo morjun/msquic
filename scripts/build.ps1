@@ -57,6 +57,9 @@ This script provides helpers for building msquic.
 .PARAMETER PGO
     Builds msquic with profile guided optimization support (Windows-only).
 
+.PARAMETER UseXdp
+    Enables XDP support (Linux-only).
+
 .PARAMETER Generator
     Specifies a specific cmake generator (Only supported on unix)
 
@@ -167,6 +170,9 @@ param (
     [switch]$PGO = $false,
 
     [Parameter(Mandatory = $false)]
+    [switch]$UseXdp = $false,
+
+    [Parameter(Mandatory = $false)]
     [string]$Generator = "",
 
     [Parameter(Mandatory = $false)]
@@ -262,6 +268,12 @@ if ($Arch -eq "arm64ec") {
     }
     if ($Tls -eq "openssl" -Or $Tls -eq "openssl3") {
         Write-Error "Arm64EC does not support openssl"
+    }
+}
+
+if ($IsLinux -And $Arch -ne "x64") {
+    if ($UseXdp) {
+        Write-Error "Linux XDP is supported only on x64 platforms"
     }
 }
 
@@ -396,6 +408,12 @@ function CMake-Generate {
                 "arm64" { $Arguments += " -DCMAKE_CXX_COMPILER_TARGET=aarch64-linux-gnu -DCMAKE_C_COMPILER_TARGET=aarch64-linux-gnu -DCMAKE_TARGET_ARCHITECTURE=arm64" }
                 "arm" { $Arguments += " -DCMAKE_CXX_COMPILER_TARGET=arm-linux-gnueabihf  -DCMAKE_C_COMPILER_TARGET=arm-linux-gnueabihf -DCMAKE_TARGET_ARCHITECTURE=arm" }
             }
+
+            # to build with pkg-config
+            switch ($Arch) {
+                "arm"   { $env:PKG_CONFIG_PATH="$SysRoot/usr/lib/arm-linux-gnueabihf/pkgconfig" }
+                "arm64" { $env:PKG_CONFIG_PATH="$SysRoot/usr/lib/aarch64-linux-gnu/pkgconfig" }
+            }
        }
     }
     if ($ToolchainFile -ne "") {
@@ -450,6 +468,9 @@ function CMake-Generate {
     }
     if ($PGO) {
         $Arguments += " -DQUIC_PGO=on"
+    }
+    if ($UseXdp) {
+        $Arguments += " -DQUIC_LINUX_XDP_ENABLED=on"
     }
     if ($Platform -eq "uwp") {
         $Arguments += " -DCMAKE_SYSTEM_NAME=WindowsStore -DCMAKE_SYSTEM_VERSION=10.0 -DQUIC_UWP_BUILD=on"
