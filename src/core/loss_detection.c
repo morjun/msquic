@@ -621,6 +621,12 @@ QuicLossDetectionOnPacketAcknowledged(
                 Packet->Flags.SuspectedLost ?
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS :
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED);
+
+            QuicTraceLogVerbose(
+                PacketTxForget,
+                "[%c][TX][%llu] ClientContext should be set to NULL",
+                PtkConnPre(Connection),
+            Packet->PacketNumber);
             break;
         }
     }
