@@ -903,17 +903,6 @@ QuicLossDetectionOnPacketDiscarded(
         PtkConnPre(Connection),
         Packet->PacketNumber);
 
-    for (uint8_t i = 0; i < Packet->FrameCount; i++) {
-        switch (Packet->Frames[i].Type) {
-
-        case QUIC_FRAME_DATAGRAM:
-        case QUIC_FRAME_DATAGRAM_1:
-            QuicDatagramIndicateSendStateChange(
-                Connection,
-                &Packet->Frames[i].DATAGRAM.ClientContext,
-                QUIC_DATAGRAM_SEND_LOST_DISCARDED);
-            break;
-        }
         if (Packet->Flags.IsMtuProbe && DiscardedForLoss) {
             uint8_t PathIndex;
             QUIC_PATH* Path = QuicConnGetPathByID(Connection, Packet->PathId, &PathIndex);
@@ -925,7 +914,6 @@ QuicLossDetectionOnPacketDiscarded(
                         Packet->PacketLength);
                 QuicMtuDiscoveryProbePacketDiscarded(&Path->MtuDiscovery, Connection, PacketMtu);
             }
-        }
     }
 
     QuicSentPacketPoolReturnPacketMetadata(&Connection->Worker->SentPacketPool, Packet);
