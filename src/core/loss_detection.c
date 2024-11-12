@@ -905,11 +905,11 @@ QuicLossDetectionOnPacketDiscarded(
 {
     QUIC_CONNECTION* Connection = QuicLossDetectionGetConnection(LossDetection);
 
-    // QuicTraceLogVerbose(
-    // PacketTxForget,
-    // "[%c][TX][%llu] QuicLossDetectionOnPacketDiscarded has been called",
-    // PtkConnPre(Connection),
-    // Packet->PacketNumber);
+    QuicTraceLogVerbose(
+    PacketTxForget,
+    "[%c][TX][%llu] QuicLossDetectionOnPacketDiscarded has been called",
+    PtkConnPre(Connection),
+    Packet->PacketNumber);
 
     if (Packet->Flags.IsMtuProbe && DiscardedForLoss) {
         uint8_t PathIndex;
