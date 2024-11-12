@@ -622,6 +622,8 @@ QuicLossDetectionOnPacketAcknowledged(
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS :
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED);
 
+            Packet->Frames[i].DATAGRAM.ClientContext = NULL;
+
             QuicTraceLogVerbose(
                 PacketTxForget,
                 "[%c][TX][%llu] ClientContext should be set to NULL",
