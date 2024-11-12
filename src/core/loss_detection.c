@@ -891,6 +891,11 @@ QuicLossDetectionOnPacketDiscarded(
     )
 {
     QUIC_CONNECTION* Connection = QuicLossDetectionGetConnection(LossDetection);
+    QuicTraceLogVerbose(
+        PacketTxForget,
+        "[%c][TX][%llu] QuicLossDetectionOnPacketDiscarded called",
+        PtkConnPre(Connection),
+        Packet->PacketNumber);
 
     for (uint8_t i = 0; i < Packet->FrameCount; i++) {
         switch (Packet->Frames[i].Type) {
