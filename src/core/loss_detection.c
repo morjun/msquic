@@ -624,6 +624,12 @@ QuicLossDetectionOnPacketAcknowledged(
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS :
                     QUIC_DATAGRAM_SEND_ACKNOWLEDGED);
             Packet->Frames[i].DATAGRAM.ClientContext = NULL;
+
+            QuicTraceLogVerbose(
+            PacketTxForget,
+            "[%c][TX][%llu] Packet->Frames[i].DATAGRAM.ClientContext has been set to NULL",
+            PtkConnPre(Connection),
+            Packet->PacketNumber);
             break;
 
         case QUIC_FRAME_HANDSHAKE_DONE:
