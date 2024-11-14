@@ -99,6 +99,7 @@ HQUIC Registration;
 // QUIC layer settings.
 //
 HQUIC Configuration;
+const char* SslKeyLogFile = getenv("SSLKEYLOGFILE");
 
 void PrintUsage()
 {
@@ -318,7 +319,6 @@ ServerConnectionCallback(
         QUIC_TLS_SECRETS ClientSecrets;
 
         // Get the value of the env variable to log the secrets 
-        const char* SslKeyLogFile = getenv("SSLKEYLOGFILE");
         if (SslKeyLogFile != NULL) {
             MsQuic->SetParam(Connection, QUIC_PARAM_CONN_TLS_SECRETS, sizeof(ClientSecrets), &ClientSecrets);
             // if (QUIC_FAILED(Status)) {
