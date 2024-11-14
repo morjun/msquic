@@ -313,6 +313,22 @@ ServerConnectionCallback(
         // The handshake has completed for the connection.
         //
         printf("[conn][%p] Connected\n", Connection);
+
+        QUIC_TLS_SECRETS ClientSecrets;
+
+        // Get the value of the env variable to log the secrets 
+        const char* SslKeyLogFile = getenv("SSLKEYLOGFILE");
+        if (SslKeyLogFile != NULL) {
+            MsQuic->SetParam(Connection, QUIC_PARAM_CONN_TLS_SECRETS, sizeof(ClientSecrets), &ClientSecrets);
+            // if (QUIC_FAILED(Status)) {
+            //     printf("SetParam(CONN_SECRET) failed, 0x%x\n", Status);
+            // }
+        }
+
+        if (SslKeyLogFile != NULL) {
+                WriteSslKeyLogFile(SslKeyLogFile, ClientSecrets);
+        }
+
         MsQuic->ConnectionSendResumptionTicket(Connection, QUIC_SEND_RESUMPTION_FLAG_NONE, 0, NULL);
         break;
     case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
@@ -870,6 +886,7 @@ main(
     )
 {
     QUIC_STATUS Status = QUIC_STATUS_SUCCESS;
+
 
     //
     // Open a handle to the library and get the API function table.
