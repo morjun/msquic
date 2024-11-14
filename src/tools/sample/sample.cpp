@@ -100,6 +100,13 @@ HQUIC Registration;
 HQUIC Configuration;
 const char* SslKeyLogFile = getenv("SSLKEYLOGFILE");
 
+inline
+void
+WriteSslKeyLogFile(
+    _In_z_ const char* FileName,
+    _In_ QUIC_TLS_SECRETS& TlsSecrets
+    );
+
 void PrintUsage()
 {
     printf(
