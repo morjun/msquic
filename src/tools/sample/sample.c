@@ -80,7 +80,7 @@ const uint64_t IdleTimeoutMs = 10000;
 //
 // The length of buffer sent over the streams in the protocol.
 //
-const uint32_t SendBufferLength = 10000;
+const uint32_t SendBufferLength = 1200;
 
 //
 // The QUIC API/function table returned from MsQuicOpen2. It contains all the
