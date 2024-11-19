@@ -1,3 +1,4 @@
+#!/bin/sh
 # This is for Linux
 
 lttng destroy msquic 2> /dev/null
