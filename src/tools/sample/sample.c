@@ -438,6 +438,10 @@ ServerConnectionCallback(
         //
         // The handshake has completed for the connection.
         //
+        const char* SslKeyLogFile = getenv(SslKeyLogEnvVar);
+        if (SslKeyLogFile != NULL) {
+            WriteSslKeyLogFile(SslKeyLogFile, &ClientSecrets);
+        }
         printf("[conn][%p] Connected\n", Connection);
         MsQuic->ConnectionSendResumptionTicket(Connection, QUIC_SEND_RESUMPTION_FLAG_NONE, 0, NULL);
         break;
