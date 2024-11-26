@@ -207,6 +207,11 @@ QuicPacketBuilderPrepare(
         (NewPacketType == (uint8_t)QUIC_INITIAL_V1 || NewPacketKeyType == (uint8_t)QUIC_INITIAL_V2)) ? TRUE : Connection->State.FixedBit;
 
     uint16_t DatagramSize = Builder->Path->Mtu;
+    QuicTraceEvent(
+        ConnError,
+        "[conn][%p] DatagramSize, %d.",
+        Connection,
+        DatagramSize);
     if ((uint32_t)DatagramSize > Builder->Path->Allowance) {
         CXPLAT_DBG_ASSERT(!IsPathMtuDiscovery); // PMTUD always happens after source addr validation.
         DatagramSize = (uint16_t)Builder->Path->Allowance;
