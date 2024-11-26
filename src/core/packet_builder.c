@@ -209,8 +209,7 @@ QuicPacketBuilderPrepare(
     uint16_t DatagramSize = Builder->Path->Mtu;
     QuicTraceEvent(
         ConnError,
-        "[conn][%p] DatagramSize, %d.",
-        Connection,
+        "DatagramSize: %d",
         DatagramSize);
     if ((uint32_t)DatagramSize > Builder->Path->Allowance) {
         CXPLAT_DBG_ASSERT(!IsPathMtuDiscovery); // PMTUD always happens after source addr validation.
