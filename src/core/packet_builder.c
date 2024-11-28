@@ -235,7 +235,8 @@ QuicPacketBuilderPrepare(
                 Builder->PacketType == SEND_PACKET_SHORT_HEADER_TYPE) {
                 FlushDatagrams = TRUE;
             }
-            QuicPacketBuilderFinalize(Builder, TRUE);
+            FlushDatagrams = TRUE;
+            QuicPacketBuilderFinalize(Builder, FlushDatagrams);
         }
         if (Builder->SendData == NULL &&
             Builder->TotalCountDatagrams >= QUIC_MAX_DATAGRAMS_PER_SEND) {
