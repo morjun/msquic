@@ -176,7 +176,7 @@ typedef struct QUIC_RX_PACKET QUIC_RX_PACKET;
 // FLUSH_SEND operation. The actual number will generally exceed this value up
 // to the limit of the current USO buffer being filled.
 //
-#define QUIC_MAX_DATAGRAMS_PER_SEND             40
+#define QUIC_MAX_DATAGRAMS_PER_SEND             1
 
 //
 // The number of packets we write for a single stream before going to the next
