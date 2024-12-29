@@ -565,7 +565,7 @@ ServerLoadConfiguration(
     Settings.IsSet.PeerBidiStreamCount = TRUE;
 
     //SetMaximumMTU
-    Settings.MaximumMtu = 1450;
+    // Settings.MaximumMtu = 1450;
 
     QUIC_CREDENTIAL_CONFIG_HELPER Config;
     memset(&Config, 0, sizeof(Config));
