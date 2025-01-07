@@ -83,6 +83,8 @@ typedef struct DATAPATH_RX_IO_BLOCK {
 //
 
 typedef struct CXPLAT_SEND_DATA {
+    CXPLAT_SEND_DATA_COMMON;
+
     //
     // The proc context owning this send context.
     //
@@ -109,16 +111,6 @@ typedef struct CXPLAT_SEND_DATA {
     CXPLAT_LIST_ENTRY PendingSendLinkage;
 
     //
-    // The total buffer size for Buffers.
-    //
-    uint32_t TotalSize;
-
-    //
-    // The type of ECN markings needed for send.
-    //
-    CXPLAT_ECN_TYPE ECN;
-
-    //
     // Total number of Buffers currently in use.
     //
     uint32_t BufferCount;
@@ -142,11 +134,6 @@ typedef struct CXPLAT_SEND_DATA {
     // IO vectors used for sends on the socket.
     //
     struct iovec Iovs[CXPLAT_MAX_BATCH_SEND];
-
-    //
-    // The send segmentation size; zero if segmentation is not performed.
-    //
-    uint16_t SegmentSize;
 
 } CXPLAT_SEND_DATA;
 
@@ -175,12 +162,12 @@ typedef struct QUIC_CACHEALIGN CXPLAT_SOCKET_CONTEXT {
     //
     // The event for the shutdown event.
     //
-    DATAPATH_SQE ShutdownSqe;
+    CXPLAT_SQE ShutdownSqe;
 
     //
-    // The user data for the IO event.
+    // The event for the IO event.
     //
-    uint32_t IoCqeType;
+    CXPLAT_SQE IoSqe;
 
     //
     // The I/O vector for receive datagrams.
@@ -389,6 +376,9 @@ typedef struct CXPLAT_DATAPATH {
     CXPLAT_DATAPATH_PARTITION Partitions[];
 
 } CXPLAT_DATAPATH;
+    
+CXPLAT_EVENT_COMPLETION CxPlatSocketContextUninitializeEventComplete;
+CXPLAT_EVENT_COMPLETION CxPlatSocketContextIoEventComplete;
 
 QUIC_STATUS
 CxPlatSocketSendInternal(
@@ -577,6 +567,9 @@ CxPlatDataPathGetSupportedFeatures(
     _In_ CXPLAT_DATAPATH* Datapath
     )
 {
+    //
+    // Intentionally not enabling Feature_TTL on MacOS for now.
+    //
     return Datapath->Features;
 }
 
@@ -656,19 +649,15 @@ CxPlatSocketContextInitialize(
         goto Exit;
     }
 
-    if (!CxPlatSqeInitialize(
-            SocketContext->DatapathPartition->EventQ,
-            &SocketContext->ShutdownSqe.Sqe,
-            &SocketContext->ShutdownSqe)) {
-        Status = errno;
-        QuicTraceEvent(
-            DatapathErrorStatus,
-            "[data][%p] ERROR, %u, %s.",
-            Binding,
-            Status,
-            "CxPlatSqeInitialize failed");
-        goto Exit;
-    }
+    CxPlatSqeInitialize(
+        SocketContext->DatapathPartition->EventQ,
+        CxPlatSocketContextUninitializeEventComplete,
+        &SocketContext->ShutdownSqe);
+    CxPlatSqeInitializeEx(
+        SocketContext->DatapathPartition->EventQ,
+        SocketContext->SocketFd,
+        CxPlatSocketContextIoEventComplete,
+        &SocketContext->IoSqe);
 
     //
     // Set dual (IPv4 & IPv6) socket mode unless we operate in pure IPv4 mode
@@ -982,9 +971,11 @@ CxPlatSocketContextUninitializeComplete(
     }
 
     if (SocketContext->SocketFd != INVALID_SOCKET) {
-        struct kevent DeleteEvent = {0};
-        EV_SET(&DeleteEvent, SocketContext->SocketFd, EVFILT_READ, EV_DELETE, 0, 0, &SocketContext->IoCqeType);
-        (void)kevent(*SocketContext->DatapathPartition->EventQ, &DeleteEvent, 1, NULL, 0, NULL);
+        CxPlatEventQEnqueueEx(
+            SocketContext->DatapathPartition->EventQ,
+            &SocketContext->IoSqe,
+            EVFILT_READ,
+            EV_DELETE);
         close(SocketContext->SocketFd);
     }
 
@@ -995,6 +986,16 @@ CxPlatSocketContextUninitializeComplete(
         CxPlatProcessorContextRelease(SocketContext->DatapathPartition);
     }
     CxPlatSocketRelease(SocketContext->Binding);
+}
+
+void
+CxPlatSocketContextUninitializeEventComplete(
+    _In_ CXPLAT_CQE* Cqe
+    )
+{
+    CXPLAT_SOCKET_CONTEXT* SocketContext =
+        CXPLAT_CONTAINING_RECORD(CxPlatCqeGetSqe(Cqe), CXPLAT_SOCKET_CONTEXT, ShutdownSqe);
+    CxPlatSocketContextUninitializeComplete(SocketContext);
 }
 
 void
@@ -1015,13 +1016,13 @@ CxPlatSocketContextUninitialize(
         //
         // Cancel and clean up any pending IO.
         //
-        struct kevent DeleteEvent = {0};
-        EV_SET(&DeleteEvent, SocketContext->SocketFd, EVFILT_READ, EV_DELETE, 0, 0, &SocketContext->IoCqeType);
-        (void)kevent(*SocketContext->DatapathPartition->EventQ, &DeleteEvent, 1, NULL, 0, NULL);
-
+        CxPlatEventQEnqueueEx(
+            SocketContext->DatapathPartition->EventQ,
+            &SocketContext->IoSqe,
+            EVFILT_READ,
+            EV_DELETE);
         CxPlatEventQEnqueue(
             SocketContext->DatapathPartition->EventQ,
-            &SocketContext->ShutdownSqe.Sqe,
             &SocketContext->ShutdownSqe);
     }
 }
@@ -1073,25 +1074,18 @@ CxPlatSocketContextStartReceive(
         goto Error;
     }
 
-    struct kevent Event = {0};
-    EV_SET(&Event, SocketContext->SocketFd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &SocketContext->IoCqeType);
-
-    int Ret =
-        kevent(
-            *SocketContext->DatapathPartition->EventQ,
-            &Event,
-            1,
-            NULL,
-            0,
-            NULL);
-    if (Ret < 0) {
+    if (!CxPlatEventQEnqueueEx(
+            SocketContext->DatapathPartition->EventQ,
+            &SocketContext->IoSqe,
+            EVFILT_READ,
+            EV_ADD | EV_ENABLE)) {
         Status = errno;
         QuicTraceEvent(
             DatapathErrorStatus,
             "[data][%p] ERROR, %u, %s.",
             SocketContext->Binding,
             Status,
-            "kevent failed");
+            "CxPlatEventQEnqueueEx failed");
         goto Error;
     }
 
@@ -1127,6 +1121,7 @@ CxPlatSocketContextRecvComplete(
 
     RecvPacket->Route->Queue = SocketContext;
     RecvPacket->TypeOfService = 0;
+    RecvPacket->HopLimitTTL = 0; // TODO: We are not supporting this on MacOS (yet) unless there's a business need.
 
     struct cmsghdr *CMsg;
     for (CMsg = CMSG_FIRSTHDR(&SocketContext->RecvMsgHdr);
@@ -1316,11 +1311,13 @@ CxPlatSocketContextSendComplete(
 }
 
 void
-CxPlatDataPathSocketProcessIoCompletion(
-    _In_ CXPLAT_SOCKET_CONTEXT* SocketContext,
+CxPlatSocketContextIoEventComplete(
     _In_ CXPLAT_CQE* Cqe
     )
 {
+    CXPLAT_SOCKET_CONTEXT* SocketContext =
+        CXPLAT_CONTAINING_RECORD(CxPlatCqeGetSqe(Cqe), CXPLAT_SOCKET_CONTEXT, IoSqe);
+
     if (!CxPlatRundownAcquire(&SocketContext->UpcallRundown)) {
         return;
     }
@@ -1434,8 +1431,6 @@ CxPlatSocketCreateUdp(
     for (uint32_t i = 0; i < SocketCount; i++) {
         Binding->SocketContexts[i].Binding = Binding;
         Binding->SocketContexts[i].SocketFd = INVALID_SOCKET;
-        Binding->SocketContexts[i].ShutdownSqe.CqeType = CXPLAT_CQE_TYPE_SOCKET_SHUTDOWN;
-        Binding->SocketContexts[i].IoCqeType = CXPLAT_CQE_TYPE_SOCKET_IO;
         Binding->SocketContexts[i].RecvIov.iov_len =
             Binding->Mtu - CXPLAT_MIN_IPV4_HEADER_SIZE - CXPLAT_UDP_HEADER_SIZE;
         Binding->SocketContexts[i].DatapathPartition =
@@ -2038,24 +2033,18 @@ CxPlatSocketSendInternal(
                 CxPlatLockRelease(&SocketContext->PendingSendDataLock);
             }
             SendPending = TRUE;
-            struct kevent Event = {0};
-            EV_SET(&Event, SocketContext->SocketFd, EVFILT_WRITE, EV_ADD | EV_ONESHOT | EV_CLEAR, 0, 0, &SocketContext->IoCqeType);
-            int Ret =
-                kevent(
-                    *SocketContext->DatapathPartition->EventQ,
-                    &Event,
-                    1,
-                    NULL,
-                    0,
-                    NULL);
-            if (Ret < 1) {
+            if (!CxPlatEventQEnqueueEx(
+                    SocketContext->DatapathPartition->EventQ,
+                    &SocketContext->IoSqe,
+                    EVFILT_WRITE,
+                    EV_ADD | EV_ONESHOT | EV_CLEAR)) {
                 Status = errno;
                 QuicTraceEvent(
                     DatapathErrorStatus,
                     "[data][%p] ERROR, %u, %s.",
                     SocketContext->Binding,
                     Status,
-                    "kevent failed");
+                    "CxPlatEventQEnqueueEx failed");
                 goto Exit;
             }
             Status = QUIC_STATUS_PENDING;
@@ -2136,27 +2125,6 @@ CxPlatSocketGetTcpStatistics(
     UNREFERENCED_PARAMETER(Socket);
     UNREFERENCED_PARAMETER(Statistics);
     return QUIC_STATUS_NOT_SUPPORTED;
-}
-
-void
-CxPlatDataPathProcessCqe(
-    _In_ CXPLAT_CQE* Cqe
-    )
-{
-    switch (CxPlatCqeType(Cqe)) {
-    case CXPLAT_CQE_TYPE_SOCKET_SHUTDOWN: {
-        CXPLAT_SOCKET_CONTEXT* SocketContext =
-            CXPLAT_CONTAINING_RECORD(CxPlatCqeUserData(Cqe), CXPLAT_SOCKET_CONTEXT, ShutdownSqe);
-        CxPlatSocketContextUninitializeComplete(SocketContext);
-        break;
-    }
-    case CXPLAT_CQE_TYPE_SOCKET_IO: {
-        CXPLAT_SOCKET_CONTEXT* SocketContext =
-            CXPLAT_CONTAINING_RECORD(CxPlatCqeUserData(Cqe), CXPLAT_SOCKET_CONTEXT, IoCqeType);
-        CxPlatDataPathSocketProcessIoCompletion(SocketContext, Cqe);
-        break;
-    }
-    }
 }
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
