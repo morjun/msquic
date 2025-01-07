@@ -1008,7 +1008,8 @@ Exit:
             Builder->DatagramLength = 0;
         }
 
-        if (FlushBatchedDatagrams || CxPlatSendDataIsFull(Builder->SendData) || Builder->TotalCountDatagrams >= 1) {
+        // if (FlushBatchedDatagrams || CxPlatSendDataIsFull(Builder->SendData) || Builder->TotalCountDatagrams >= 1) {
+        if (FlushBatchedDatagrams || CxPlatSendDataIsFull(Builder->SendData)) {
             if (Builder->BatchCount != 0) {
                 QuicPacketBuilderFinalizeHeaderProtection(Builder);
             }
