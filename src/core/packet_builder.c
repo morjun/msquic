@@ -235,7 +235,6 @@ QuicPacketBuilderPrepare(
                 Builder->PacketType == SEND_PACKET_SHORT_HEADER_TYPE) {
                 FlushDatagrams = TRUE;
             }
-            FlushDatagrams = TRUE;
             QuicPacketBuilderFinalize(Builder, FlushDatagrams);
         }
         if (Builder->SendData == NULL &&
@@ -1009,7 +1008,7 @@ Exit:
             Builder->DatagramLength = 0;
         }
 
-        if (FlushBatchedDatagrams || CxPlatSendDataIsFull(Builder->SendData)) {
+        if (FlushBatchedDatagrams || CxPlatSendDataIsFull(Builder->SendData) || Builder->TotalCountDatagrams >= 1) {
             if (Builder->BatchCount != 0) {
                 QuicPacketBuilderFinalizeHeaderProtection(Builder);
             }
