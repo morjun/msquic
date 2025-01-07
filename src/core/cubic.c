@@ -376,6 +376,10 @@ CubicCongestionControlOnDataSent(
 {
     QUIC_CONGESTION_CONTROL_CUBIC* Cubic = &Cc->Cubic;
 
+    QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
+    BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
+    printf("SpinBit at CCCODS: %d\n", SpinBit);
+
     BOOLEAN PreviousCanSendState = QuicCongestionControlCanSend(Cc);
 
     Cubic->BytesInFlight += NumRetransmittableBytes;
