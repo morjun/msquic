@@ -389,7 +389,7 @@ CubicCongestionControlOnDataSent(
         printf("SpinBit changed\n");
         PrevSpinBit = SpinBit;
         // 조건에 따라 호출
-            if (packetCount < 10) {
+            if (packetCount < 10 && QuicConnIsServer(Connection)) {
                 CubicCongestionControlReset(Cc, TRUE);
             }
         packetCount = 0;
