@@ -168,6 +168,7 @@ CubicCongestionControlReset(
     Cubic->IsInRecovery = FALSE;
     Cubic->HasHadCongestionEvent = FALSE;
     Cubic->CongestionWindow = DatagramPayloadLength * Cubic->InitialWindowPackets;
+    printf("Initial CWnd: %d\n", Cubic->CongestionWindow);
     Cubic->BytesInFlightMax = Cubic->CongestionWindow / 2;
     Cubic->LastSendAllowance = 0;
     if (FullReset) {
@@ -391,6 +392,7 @@ CubicCongestionControlOnDataSent(
         // 조건에 따라 호출
             if (packetCount < 10 && QuicConnIsServer(Connection)) {
                 CubicCongestionControlReset(Cc, FALSE);
+                printf("Cubic reset\n");
             }
         packetCount = 0;
     }
