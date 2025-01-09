@@ -41,9 +41,6 @@ Abstract:
 // The initial shift of 30 bits gives us 3-bit-aligned chunks.
 //
 
-BOOLEAN PrevSpinBit = FALSE;
-uint32_t packetCount = 0;
-
 _IRQL_requires_max_(DISPATCH_LEVEL)
 uint32_t
 CubeRoot(
@@ -379,21 +376,6 @@ CubicCongestionControlOnDataSent(
     )
 {
     QUIC_CONGESTION_CONTROL_CUBIC* Cubic = &Cc->Cubic;
-
-    QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
-    BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
-    packetCount++;
-    printf("SpinBit at CCCODS: %d\n", SpinBit);
-
-    if (SpinBit != PrevSpinBit) {
-        printf("SpinBit changed\n");
-        PrevSpinBit = SpinBit;
-        // 조건에 따라 호출
-            if (packetCount < 10 && QuicConnIsServer(Connection)) {
-                CubicCongestionControlReset(Cc, FALSE);
-            }
-        packetCount = 0;
-    }
 
     BOOLEAN PreviousCanSendState = QuicCongestionControlCanSend(Cc);
 
