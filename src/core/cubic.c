@@ -43,6 +43,8 @@ Abstract:
 
 BOOLEAN PrevSpinBit = FALSE;
 uint32_t packetCount = 0;
+uint32_t fack_count = 0;
+uint32_t rack_count = 0;
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 uint32_t
@@ -384,21 +386,21 @@ CubicCongestionControlOnDataSent(
 
     const uint16_t DatagramPayloadLength = QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
 
-    BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
-    packetCount++;
-    printf("SpinBit at CCCODS: %d\n", SpinBit);
+    // BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
+    // packetCount++;
+    // printf("SpinBit at CCCODS: %d\n", SpinBit);
 
-    if (SpinBit != PrevSpinBit) {
-        printf("SpinBit changed\n");
-        PrevSpinBit = SpinBit;
-        // 조건에 따라 호출
+    // if (SpinBit != PrevSpinBit) {
+    //     printf("SpinBit changed\n");
+    //     PrevSpinBit = SpinBit;
+    //     // 조건에 따라 호출
 
-            if (packetCount < 10 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
-                CubicCongestionControlReset(Cc, FALSE);
-                printf("Cubic reset\n");
-            }
-        packetCount = 0;
-    }
+    //         if (packetCount < 10 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
+    //             CubicCongestionControlReset(Cc, FALSE);
+    //             printf("Cubic reset\n");
+    //         }
+    //     packetCount = 0;
+    // }
 
     BOOLEAN PreviousCanSendState = QuicCongestionControlCanSend(Cc);
 
@@ -731,6 +733,9 @@ CubicCongestionControlOnDataLost(
     QUIC_CONGESTION_CONTROL_CUBIC* Cubic = &Cc->Cubic;
 
     BOOLEAN PreviousCanSendState = CubicCongestionControlCanSend(Cc);
+    QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
+    const uint16_t DatagramPayloadLength = QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
+    double rack_ratio = 0;
 
     //
     // If data is lost after the most recent congestion event (or if there
@@ -747,6 +752,29 @@ CubicCongestionControlOnDataLost(
             FALSE);
 
         CubicCongestionHyStartChangeState(Cc, HYSTART_DONE);
+    }
+
+    if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_FACK) {
+        printf("FACK\n");
+        if (fack_count + rack_count + 1 > 10) {
+            fack_count = 0;
+            rack_count = 0;
+        }
+        fack_count++;
+    } else if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_RACK) {
+        printf("RACK\n");
+        if (fack_count + rack_count + 1 > 10) {
+            fack_count = 0;
+            rack_count = 0;
+        }
+        rack_count++;
+    }
+
+    rack_ratio = (rack_count + fack_count) > 0 ? (double)rack_count / (rack_count + fack_count) : 0;
+
+    if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
+        CubicCongestionControlReset(Cc, FALSE);
+        printf("Cubic reset\n");
     }
 
     CXPLAT_DBG_ASSERT(Cubic->BytesInFlight >= LossEvent->NumRetransmittableBytes);
