@@ -63,6 +63,8 @@ typedef struct QUIC_LOSS_EVENT {
 
     uint32_t NumRetransmittableBytes;
 
+    QUIC_TRACE_PACKET_LOSS_REASON LossReason;
+
     BOOLEAN PersistentCongestion : 1;
 
 } QUIC_LOSS_EVENT;
