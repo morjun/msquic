@@ -1068,7 +1068,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                 .LargestPacketNumberLost = LargestLostPacketNumber,
                 .LargestSentPacketNumber = LossDetection->LargestSentPacketNumber,
                 .NumRetransmittableBytes = LostRetransmittableBytes,
-                .LossReason = QUIC_TRACE_PACKET_LOSS_RACK,
+                // .LossReason = QUIC_TRACE_PACKET_LOSS_RACK,
                 .PersistentCongestion =
                     LossDetection->ProbeCount > QUIC_PERSISTENT_CONGESTION_THRESHOLD
             };
