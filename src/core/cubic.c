@@ -774,7 +774,9 @@ CubicCongestionControlOnDataLost(
 
     if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
         CubicCongestionControlReset(Cc, FALSE);
-        printf("Cubic reset\n");
+        printf("fack_count: %d, rack_count:%d, rack_ratio:%f, Cubic reset\n", fack_count, rack_count, rack_ratio);
+        fack_count = 0;
+        rack_count = 0;
     }
 
     CXPLAT_DBG_ASSERT(Cubic->BytesInFlight >= LossEvent->NumRetransmittableBytes);
