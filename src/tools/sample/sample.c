@@ -383,7 +383,7 @@ ServerStreamCallback(
         // returned back to the app.
         //
         free(Event->SEND_COMPLETE.ClientContext);
-        printf("[strm][%p] Data sent\n", Stream);
+        // printf("[strm][%p] Data sent\n", Stream);
         break;
     case QUIC_STREAM_EVENT_RECEIVE:
         //

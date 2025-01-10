@@ -395,8 +395,10 @@ CubicCongestionControlOnDataSent(
         PrevSpinBit = SpinBit;
         // 조건에 따라 호출
 
-            if (packetCount < 10 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
+            if (packetCount < 10 && QuicConnIsServer(Connection) && (Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets)) {
+
                 CubicCongestionControlReset(Cc, FALSE);
+                printf("Cwnd After Decrease: %d, InitialWindowPackets: %d\n", Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10), DatagramPayloadLength * Cubic->InitialWindowPackets);
                 printf("Cubic reset\n");
             }
         packetCount = 0;
