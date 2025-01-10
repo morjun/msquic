@@ -384,21 +384,21 @@ CubicCongestionControlOnDataSent(
 
     const uint16_t DatagramPayloadLength = QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
 
-    BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
-    packetCount++;
-    printf("SpinBit at CCCODS: %d\n", SpinBit);
+    // BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
+    // packetCount++;
+    // printf("SpinBit at CCCODS: %d\n", SpinBit);
 
-    if (SpinBit != PrevSpinBit) {
-        printf("SpinBit changed\n");
-        PrevSpinBit = SpinBit;
-        // 조건에 따라 호출
+    // if (SpinBit != PrevSpinBit) {
+    //     printf("SpinBit changed\n");
+    //     PrevSpinBit = SpinBit;
+    //     // 조건에 따라 호출
 
-            if (packetCount < 10 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
-                CubicCongestionControlReset(Cc, FALSE);
-                printf("Cubic reset\n");
-            }
-        packetCount = 0;
-    }
+    //         if (packetCount < 10 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
+    //             CubicCongestionControlReset(Cc, FALSE);
+    //             printf("Cubic reset\n");
+    //         }
+    //     packetCount = 0;
+    // }
 
     BOOLEAN PreviousCanSendState = QuicCongestionControlCanSend(Cc);
 
