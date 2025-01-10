@@ -971,7 +971,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
         uint64_t TimeReorderThreshold = QUIC_TIME_REORDER_THRESHOLD(Rtt);
         uint64_t LargestLostPacketNumber = 0;
         QUIC_SENT_PACKET_METADATA* PrevPacket = NULL;
-        QUIC_TRACE_PACKET_LOSS_REASON LossReason = NULL;
+        QUIC_TRACE_PACKET_LOSS_REASON LossReason = QUIC_TRACE_PACKET_LOSS_PROBE;
         Packet = LossDetection->SentPackets;
         while (Packet != NULL) {
 
