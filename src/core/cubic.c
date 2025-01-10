@@ -757,10 +757,10 @@ CubicCongestionControlOnDataLost(
     }
 
     if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_FACK) {
-        // printf("FACK\n");
+        printf("FACK\n");
         fack_count++;
     } else if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_RACK) {
-        // printf("RACK\n");
+        printf("RACK\n");
         rack_count++;
     }
 
