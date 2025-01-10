@@ -1003,6 +1003,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                         Packet->PacketNumber,
                         QuicPacketTraceType(Packet),
                         QUIC_TRACE_PACKET_LOSS_FACK);
+                    myLossReason = QUIC_TRACE_PACKET_LOSS_FACK;
                 }
             } else if (Packet->PacketNumber < LossDetection->LargestAck &&
                         CxPlatTimeAtOrBefore64(Packet->SentTime + TimeReorderThreshold, TimeNow)) {
@@ -1020,6 +1021,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                         Packet->PacketNumber,
                         QuicPacketTraceType(Packet),
                         QUIC_TRACE_PACKET_LOSS_RACK);
+                    myLossReason = QUIC_TRACE_PACKET_LOSS_RACK;
                 }
             } else {
                 break;
