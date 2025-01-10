@@ -971,6 +971,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
         uint64_t TimeReorderThreshold = QUIC_TIME_REORDER_THRESHOLD(Rtt);
         uint64_t LargestLostPacketNumber = 0;
         QUIC_SENT_PACKET_METADATA* PrevPacket = NULL;
+        QUIC_TRACE_PACKET_LOSS_REASON LossReason = QUIC_TRACE_PACKET_LOSS_PROBE;
         Packet = LossDetection->SentPackets;
         while (Packet != NULL) {
 
@@ -1001,6 +1002,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                         Packet->PacketNumber,
                         QuicPacketTraceType(Packet),
                         QUIC_TRACE_PACKET_LOSS_FACK);
+                    LossReason = QUIC_TRACE_PACKET_LOSS_FACK;
                 }
             } else if (Packet->PacketNumber < LossDetection->LargestAck &&
                         CxPlatTimeAtOrBefore64(Packet->SentTime + TimeReorderThreshold, TimeNow)) {
@@ -1018,6 +1020,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                         Packet->PacketNumber,
                         QuicPacketTraceType(Packet),
                         QUIC_TRACE_PACKET_LOSS_RACK);
+                    LossReason = QUIC_TRACE_PACKET_LOSS_RACK;
                 }
             } else {
                 break;
