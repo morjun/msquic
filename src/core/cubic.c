@@ -389,16 +389,14 @@ CubicCongestionControlOnDataSent(
     BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
     packetCount++;
     // printf("SpinBit at CCCODS: %d\n", SpinBit);
-    
-    printf("Current Cwnd: %d\n", Cubic->CongestionWindow);
 
     if (SpinBit != PrevSpinBit) {
         // printf("SpinBit changed\n");
         PrevSpinBit = SpinBit;
         // 조건에 따라 호출
 
-            if (packetCount < 10 && QuicConnIsServer(Connection) && (Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets)) {
-                printf("Cwnd After Decrease: %d, InitialWindowPackets: %d\n", Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10), DatagramPayloadLength * Cubic->InitialWindowPackets);
+            if (packetCount < 10 && QuicConnIsServer(Connection) && (Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets)) {
+                printf("Cwnd After Decrease: %d, InitialWindowPackets: %d\n", Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10, DatagramPayloadLength * Cubic->InitialWindowPackets);
                 CubicCongestionControlReset(Cc, FALSE);
                 printf("Cubic reset based on spin count: %d\n", packetCount);
             }
@@ -772,7 +770,7 @@ CubicCongestionControlOnDataLost(
         rack_count = 0;
     }
 
-    if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * (TEN_TIMES_BETA_CUBIC / 10) < DatagramPayloadLength * Cubic->InitialWindowPackets) {
+    if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets) {
         CubicCongestionControlReset(Cc, FALSE);
         printf("Cubic reset\n");
     }
