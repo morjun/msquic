@@ -388,10 +388,10 @@ CubicCongestionControlOnDataSent(
 
     BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
     packetCount++;
-    printf("SpinBit at CCCODS: %d\n", SpinBit);
+    // printf("SpinBit at CCCODS: %d\n", SpinBit);
 
     if (SpinBit != PrevSpinBit) {
-        printf("SpinBit changed\n");
+        // printf("SpinBit changed\n");
         PrevSpinBit = SpinBit;
         // 조건에 따라 호출
 
@@ -757,10 +757,10 @@ CubicCongestionControlOnDataLost(
     }
 
     if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_FACK) {
-        printf("FACK\n");
+        // printf("FACK\n");
         fack_count++;
     } else if (LossEvent -> LossReason == QUIC_TRACE_PACKET_LOSS_RACK) {
-        printf("RACK\n");
+        // printf("RACK\n");
         rack_count++;
     }
 
