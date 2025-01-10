@@ -971,6 +971,8 @@ QuicLossDetectionDetectAndHandleLostPackets(
         uint64_t TimeReorderThreshold = QUIC_TIME_REORDER_THRESHOLD(Rtt);
         uint64_t LargestLostPacketNumber = 0;
         QUIC_SENT_PACKET_METADATA* PrevPacket = NULL;
+        QUIC_TRACE_PACKET_LOSS_REASON myLossReason = QUIC_TRACE_PACKET_LOSS_FACK;
+
         Packet = LossDetection->SentPackets;
         while (Packet != NULL) {
 
@@ -1065,7 +1067,7 @@ QuicLossDetectionDetectAndHandleLostPackets(
                 .LargestPacketNumberLost = LargestLostPacketNumber,
                 .LargestSentPacketNumber = LossDetection->LargestSentPacketNumber,
                 .NumRetransmittableBytes = LostRetransmittableBytes,
-                .LossReason = QUIC_TRACE_PACKET_LOSS_FACK,
+                .LossReason = myLossReason,
                 .PersistentCongestion =
                     LossDetection->ProbeCount > QUIC_PERSISTENT_CONGESTION_THRESHOLD
             };
