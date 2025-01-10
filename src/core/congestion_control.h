@@ -65,6 +65,8 @@ typedef struct QUIC_LOSS_EVENT {
 
     BOOLEAN PersistentCongestion : 1;
 
+    QUIC_TRACE_PACKET_LOSS_REASON LossReason;
+
 } QUIC_LOSS_EVENT;
 
 typedef struct QUIC_ECN_EVENT {

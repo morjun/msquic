@@ -1066,7 +1066,8 @@ QuicLossDetectionDetectAndHandleLostPackets(
                 .LargestSentPacketNumber = LossDetection->LargestSentPacketNumber,
                 .NumRetransmittableBytes = LostRetransmittableBytes,
                 .PersistentCongestion =
-                    LossDetection->ProbeCount > QUIC_PERSISTENT_CONGESTION_THRESHOLD
+                    LossDetection->ProbeCount > QUIC_PERSISTENT_CONGESTION_THRESHOLD,
+                .LossReason = QUIC_TRACE_PACKET_LOSS_RACK
             };
 
             QuicCongestionControlOnDataLost(&Connection->CongestionControl, &LossEvent);
