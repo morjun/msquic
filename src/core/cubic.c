@@ -382,8 +382,8 @@ CubicCongestionControlOnDataSent(
     )
 {
     QUIC_CONGESTION_CONTROL_CUBIC* Cubic = &Cc->Cubic;
-    QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
 
+    // QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
     // const uint16_t DatagramPayloadLength = QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
 
     // BOOLEAN SpinBit = Connection->Paths[0].SpinBit;
