@@ -68,6 +68,15 @@ QuicLossDetectionReset(
     _In_ QUIC_LOSS_DETECTION* LossDetection
     );
 
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossDetectionOnPacketDiscarded(
+    _In_ QUIC_LOSS_DETECTION* LossDetection,
+    _In_ QUIC_SENT_PACKET_METADATA* Packet,
+    _In_ BOOLEAN DiscardedForLoss
+    );
+
+
 //
 // Called when a particular key type has been discarded. This removes
 // the tracking for all related outstanding packets.
@@ -1113,3 +1122,58 @@ CubicCongestionControlInitialize(
     QuicConnLogCubic(Connection);
 }
 
+#if DEBUG
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossValidate(
+    _In_ QUIC_LOSS_DETECTION* LossDetection
+    )
+{
+    uint32_t AckElicitingPackets = 0;
+    QUIC_SENT_PACKET_METADATA** Tail = &LossDetection->SentPackets;
+    while (*Tail) {
+        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
+        if ((*Tail)->Flags.IsAckEliciting) {
+            AckElicitingPackets++;
+        }
+        Tail = &((*Tail)->Next);
+    }
+    CXPLAT_DBG_ASSERT(Tail == LossDetection->SentPacketsTail);
+    CXPLAT_DBG_ASSERT(LossDetection->PacketsInFlight == AckElicitingPackets);
+
+    Tail = &LossDetection->LostPackets;
+    while (*Tail) {
+        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
+        Tail = &((*Tail)->Next);
+    }
+    CXPLAT_DBG_ASSERT(Tail == LossDetection->LostPacketsTail);
+}
+#else
+#define QuicLossValidate(LossDetection)
+#endif
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossDetectionOnPacketDiscarded(
+    _In_ QUIC_LOSS_DETECTION* LossDetection,
+    _In_ QUIC_SENT_PACKET_METADATA* Packet,
+    _In_ BOOLEAN DiscardedForLoss
+    )
+{
+    QUIC_CONNECTION* Connection = QuicLossDetectionGetConnection(LossDetection);
+
+    if (Packet->Flags.IsMtuProbe && DiscardedForLoss) {
+        uint8_t PathIndex;
+        QUIC_PATH* Path = QuicConnGetPathByID(Connection, Packet->PathId, &PathIndex);
+        UNREFERENCED_PARAMETER(PathIndex);
+        if (Path != NULL) {
+            uint16_t PacketMtu =
+                PacketSizeFromUdpPayloadSize(
+                    QuicAddrGetFamily(&Path->Route.RemoteAddress),
+                    Packet->PacketLength);
+            QuicMtuDiscoveryProbePacketDiscarded(&Path->MtuDiscovery, Connection, PacketMtu);
+        }
+    }
+
+    QuicSentPacketPoolReturnPacketMetadata(Packet, Connection);
+}
