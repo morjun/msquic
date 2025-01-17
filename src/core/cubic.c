@@ -46,7 +46,7 @@ uint32_t packetCount = 0;
 uint32_t fack_count = 0;
 uint32_t rack_count = 0;
 
-BOOLEAN spin_solution_activated = FALSE;
+BOOLEAN spin_solution_activated = TRUE;
 BOOLEAN rack_solution_activated = TRUE;
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
