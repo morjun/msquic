@@ -12,9 +12,11 @@ Abstract:
 #include "precomp.h"
 #ifdef QUIC_CLOG
 #include "cubic.c.clog.h"
+#include "loss_detection.c.clog.h"
 #endif
 
 #include "cubic.h"
+#include "loss_detection.h"
 
 //
 // BETA and C from RFC8312. 10x multiples for integer arithmetic.
