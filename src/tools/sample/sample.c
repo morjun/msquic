@@ -1024,7 +1024,8 @@ RunClient(
         size_t addressLen = colon - Target;
         if (addressLen >= sizeof(Address)) {
             printf("Target address is too long!\n");
-            return QUIC_STATUS_INVALID_PARAMETER;
+            Status = QUIC_STATUS_INVALID_PARAMETER;
+            goto Error;
         }
         strncpy(Address, Target, addressLen);
         Address[addressLen] = '\0';
