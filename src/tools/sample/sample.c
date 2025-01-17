@@ -55,6 +55,22 @@ Abstract:
 #define UNREFERENCED_PARAMETER(P) (void)(P)
 #endif
 
+#define DEFAULT_UDP_PORT 4567
+
+// Helper function to parse port from target string
+uint16_t ParsePort(const char* target) {
+    const char* colon = strrchr(target, ':');
+    if (colon == NULL) {
+        return DEFAULT_UDP_PORT; // Default port if no port is specified
+    }
+    int port = atoi(colon + 1);
+    if (port <= 0 || port > 65535) {
+        printf("Invalid port number in target: %s\n", target);
+        return DEFAULT_UDP_PORT;
+    }
+    return (uint16_t)port;
+}
+
 //
 // The (optional) registration configuration for the app. This sets a name for
 // the app (used for persistent storage and for debugging). It also configures
@@ -66,11 +82,6 @@ const QUIC_REGISTRATION_CONFIG RegConfig = { "quicsample", QUIC_EXECUTION_PROFIL
 // The protocol name used in the Application Layer Protocol Negotiation (ALPN).
 //
 const QUIC_BUFFER Alpn = { sizeof("sample") - 1, (uint8_t*)"sample" };
-
-//
-// The UDP port used by the server side of the protocol.
-//
-const uint16_t UdpPort = 4567;
 
 //
 // The default idle timeout period (1 second) used for the protocol.
@@ -108,6 +119,11 @@ HQUIC Configuration;
 // for debugging packet captured with e.g. Wireshark.
 //
 QUIC_TLS_SECRETS ClientSecrets = {0};
+
+//
+// The UDP port used by the server side of the protocol.
+//
+uint16_t UdpPort = DEFAULT_UDP_PORT;
 
 //
 // The name of the environment variable being
@@ -994,12 +1010,35 @@ RunClient(
         goto Error;
     }
 
-    printf("[conn][%p] Connecting...\n", Connection);
+    //
+    // Parse the port from the target string.
+    //
+    UdpPort = ParsePort(Target);
+
+    //
+    // If the target contains a port, remove it for connection purposes.
+    //
+    char Address[256]; // Adjust size as needed
+    const char* colon = strrchr(Target, ':');
+    if (colon) {
+        size_t addressLen = colon - Target;
+        if (addressLen >= sizeof(Address)) {
+            printf("Target address is too long!\n");
+            return QUIC_STATUS_INVALID_PARAMETER;
+        }
+        strncpy(Address, Target, addressLen);
+        Address[addressLen] = '\0';
+    } else {
+        strncpy(Address, Target, sizeof(Address) - 1);
+        Address[sizeof(Address) - 1] = '\0';
+    }
+
+    printf("[conn][%p] Connecting to %s:%d...\n", Connection, Target, UdpPort);
 
     //
     // Start the connection to the server.
     //
-    if (QUIC_FAILED(Status = MsQuic->ConnectionStart(Connection, Configuration, QUIC_ADDRESS_FAMILY_UNSPEC, Target, UdpPort))) {
+    if (QUIC_FAILED(Status = MsQuic->ConnectionStart(Connection, Configuration, QUIC_ADDRESS_FAMILY_UNSPEC, Address, UdpPort))) {
         printf("ConnectionStart failed, 0x%x!\n", Status);
         goto Error;
     }
