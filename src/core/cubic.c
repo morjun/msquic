@@ -50,114 +50,6 @@ uint32_t rack_count = 0;
 BOOLEAN spin_solution_activated = TRUE;
 BOOLEAN rack_solution_activated = TRUE;
 
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionInitialize(
-    _Inout_ QUIC_LOSS_DETECTION* LossDetection
-    );
-
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionUninitialize(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    );
-
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionReset(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    );
-
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionOnPacketDiscarded(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ QUIC_SENT_PACKET_METADATA* Packet,
-    _In_ BOOLEAN DiscardedForLoss
-    );
-
-
-//
-// Called when a particular key type has been discarded. This removes
-// the tracking for all related outstanding packets.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionDiscardPackets(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ QUIC_PACKET_KEY_TYPE KeyType
-    );
-
-//
-// Called when 0-RTT data was rejected.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionOnZeroRttRejected(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    );
-
-//
-// Resets the timer based on the current state.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionUpdateTimer(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ BOOLEAN ExecuteImmediatelyIfNecessary
-    );
-
-//
-// Returns the current PTO in microseconds.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-uint64_t
-QuicLossDetectionComputeProbeTimeout(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ const QUIC_PATH* Path,
-    _In_ uint32_t Count
-    );
-
-//
-// Called when a new packet is sent.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionOnPacketSent(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ QUIC_PATH* Path,
-    _In_ QUIC_SENT_PACKET_METADATA* SentPacket
-    );
-
-//
-// Processes a received ACK frame. Returns true if the frame could be
-// successfully processed. On failure, 'InvalidFrame' indicates if the frame
-// was corrupt or not.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-BOOLEAN
-QuicLossDetectionProcessAckFrame(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ QUIC_PATH* Path,
-    _In_ QUIC_RX_PACKET* Packet,
-    _In_ QUIC_ENCRYPT_LEVEL EncryptLevel,
-    _In_ QUIC_FRAME_TYPE FrameType,
-    _In_ uint16_t BufferLength,
-    _In_reads_bytes_(BufferLength)
-        const uint8_t* const Buffer,
-    _Inout_ uint16_t* Offset,
-    _Out_ BOOLEAN* InvalidFrame
-    );
-
-//
-// Called when the loss detection timer fires.
-//
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionProcessTimerOperation(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    );
-
 _IRQL_requires_max_(DISPATCH_LEVEL)
 uint32_t
 CubeRoot(
@@ -178,36 +70,6 @@ CubeRoot(
     }
     return y;
 }
-
-#if DEBUG
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossValidate(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    )
-{
-    uint32_t AckElicitingPackets = 0;
-    QUIC_SENT_PACKET_METADATA** Tail = &LossDetection->SentPackets;
-    while (*Tail) {
-        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
-        if ((*Tail)->Flags.IsAckEliciting) {
-            AckElicitingPackets++;
-        }
-        Tail = &((*Tail)->Next);
-    }
-    CXPLAT_DBG_ASSERT(Tail == LossDetection->SentPacketsTail);
-    CXPLAT_DBG_ASSERT(LossDetection->PacketsInFlight == AckElicitingPackets);
-
-    Tail = &LossDetection->LostPackets;
-    while (*Tail) {
-        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
-        Tail = &((*Tail)->Next);
-    }
-    CXPLAT_DBG_ASSERT(Tail == LossDetection->LostPacketsTail);
-}
-#else
-#define QuicLossValidate(LossDetection)
-#endif
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
 void
@@ -1150,30 +1012,4 @@ CubicCongestionControlInitialize(
 
     QuicConnLogOutFlowStats(Connection);
     QuicConnLogCubic(Connection);
-}
-
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossDetectionOnPacketDiscarded(
-    _In_ QUIC_LOSS_DETECTION* LossDetection,
-    _In_ QUIC_SENT_PACKET_METADATA* Packet,
-    _In_ BOOLEAN DiscardedForLoss
-    )
-{
-    QUIC_CONNECTION* Connection = QuicLossDetectionGetConnection(LossDetection);
-
-    if (Packet->Flags.IsMtuProbe && DiscardedForLoss) {
-        uint8_t PathIndex;
-        QUIC_PATH* Path = QuicConnGetPathByID(Connection, Packet->PathId, &PathIndex);
-        UNREFERENCED_PARAMETER(PathIndex);
-        if (Path != NULL) {
-            uint16_t PacketMtu =
-                PacketSizeFromUdpPayloadSize(
-                    QuicAddrGetFamily(&Path->Route.RemoteAddress),
-                    Packet->PacketLength);
-            QuicMtuDiscoveryProbePacketDiscarded(&Path->MtuDiscovery, Connection, PacketMtu);
-        }
-    }
-
-    QuicSentPacketPoolReturnPacketMetadata(Packet, Connection);
 }

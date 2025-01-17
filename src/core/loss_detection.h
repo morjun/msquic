@@ -187,3 +187,26 @@ void
 QuicLossDetectionProcessTimerOperation(
     _In_ QUIC_LOSS_DETECTION* LossDetection
     );
+
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+BOOLEAN
+QuicLossDetectionRetransmitFrames(
+    _In_ QUIC_LOSS_DETECTION* LossDetection,
+    _In_ QUIC_SENT_PACKET_METADATA* Packet,
+    _In_ BOOLEAN ReleasePacket
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossDetectionOnPacketDiscarded(
+    _In_ QUIC_LOSS_DETECTION* LossDetection,
+    _In_ QUIC_SENT_PACKET_METADATA* Packet,
+    _In_ BOOLEAN DiscardedForLoss
+    );
+
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossValidate(
+    _In_ QUIC_LOSS_DETECTION* LossDetection
+    );
