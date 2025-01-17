@@ -16,7 +16,6 @@ Abstract:
 #endif
 
 #include "cubic.h"
-#include "loss_detection.h"
 
 //
 // BETA and C from RFC8312. 10x multiples for integer arithmetic.
