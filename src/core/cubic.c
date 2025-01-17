@@ -179,6 +179,36 @@ CubeRoot(
     return y;
 }
 
+#if DEBUG
+_IRQL_requires_max_(PASSIVE_LEVEL)
+void
+QuicLossValidate(
+    _In_ QUIC_LOSS_DETECTION* LossDetection
+    )
+{
+    uint32_t AckElicitingPackets = 0;
+    QUIC_SENT_PACKET_METADATA** Tail = &LossDetection->SentPackets;
+    while (*Tail) {
+        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
+        if ((*Tail)->Flags.IsAckEliciting) {
+            AckElicitingPackets++;
+        }
+        Tail = &((*Tail)->Next);
+    }
+    CXPLAT_DBG_ASSERT(Tail == LossDetection->SentPacketsTail);
+    CXPLAT_DBG_ASSERT(LossDetection->PacketsInFlight == AckElicitingPackets);
+
+    Tail = &LossDetection->LostPackets;
+    while (*Tail) {
+        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
+        Tail = &((*Tail)->Next);
+    }
+    CXPLAT_DBG_ASSERT(Tail == LossDetection->LostPacketsTail);
+}
+#else
+#define QuicLossValidate(LossDetection)
+#endif
+
 _IRQL_requires_max_(DISPATCH_LEVEL)
 void
 QuicConnLogCubic(
@@ -1121,36 +1151,6 @@ CubicCongestionControlInitialize(
     QuicConnLogOutFlowStats(Connection);
     QuicConnLogCubic(Connection);
 }
-
-#if DEBUG
-_IRQL_requires_max_(PASSIVE_LEVEL)
-void
-QuicLossValidate(
-    _In_ QUIC_LOSS_DETECTION* LossDetection
-    )
-{
-    uint32_t AckElicitingPackets = 0;
-    QUIC_SENT_PACKET_METADATA** Tail = &LossDetection->SentPackets;
-    while (*Tail) {
-        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
-        if ((*Tail)->Flags.IsAckEliciting) {
-            AckElicitingPackets++;
-        }
-        Tail = &((*Tail)->Next);
-    }
-    CXPLAT_DBG_ASSERT(Tail == LossDetection->SentPacketsTail);
-    CXPLAT_DBG_ASSERT(LossDetection->PacketsInFlight == AckElicitingPackets);
-
-    Tail = &LossDetection->LostPackets;
-    while (*Tail) {
-        CXPLAT_DBG_ASSERT(!(*Tail)->Flags.Freed);
-        Tail = &((*Tail)->Next);
-    }
-    CXPLAT_DBG_ASSERT(Tail == LossDetection->LostPacketsTail);
-}
-#else
-#define QuicLossValidate(LossDetection)
-#endif
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 void
