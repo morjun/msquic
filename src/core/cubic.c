@@ -401,7 +401,8 @@ CubicCongestionControlOnDataSent(
 
                 if (packetCount < 10 && QuicConnIsServer(Connection) && (Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets)) {
                     printf("Cwnd After Decrease: %d, InitialWindowPackets: %d\n", Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10, DatagramPayloadLength * Cubic->InitialWindowPackets);
-                    CubicCongestionControlReset(Cc, FALSE);
+                    // CubicCongestionControlReset(Cc, FALSE);
+                    QuicLostPacketsForget(Connection);
                     printf("Cubic reset based on spin count: %d\n", packetCount);
                 }
             packetCount = 0;
@@ -777,8 +778,9 @@ CubicCongestionControlOnDataLost(
         }
 
         if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets) {
-            CubicCongestionControlReset(Cc, FALSE);
-            printf("Cubic reset\n");
+            // CubicCongestionControlReset(Cc, FALSE);
+            // printf("Cubic reset\n");
+            QuicLostPacketsForget(Connection);
         }
     }
 
@@ -787,6 +789,41 @@ CubicCongestionControlOnDataLost(
 
     CubicCongestionControlUpdateBlockedState(Cc, PreviousCanSendState);
     QuicConnLogCubic(QuicCongestionControlGetConnection(Cc));
+}
+
+_IRQL_requires_max_(PASSIVE_LEVEL) void QuicLostPacketsForget(
+    _In_ QUIC_CONNECTION *Connection)
+{
+
+    QUIC_LOSS_DETECTION *LossDetection = &Connection->LossDetection;
+    QUIC_SENT_PACKET_METADATA *Packet;
+
+    if (LossDetection->LostPackets != NULL)
+    {
+        //
+        // Clean out any packets in the LostPackets list that we are pretty
+        // confident will never be acknowledged.
+        //
+        while ((Packet = LossDetection->LostPackets) != NULL)
+            // &&
+            //    Packet->PacketNumber < LossDetection->LargestAck &&
+            //    CxPlatTimeDiff64(Packet->SentTime, TimeNow) > TwoPto)
+        {
+            QuicTraceLogVerbose(
+                PacketTxForget,
+                "[%c][TX][%llu] Forgetting",
+                PtkConnPre(Connection),
+                Packet->PacketNumber);
+            LossDetection->LostPackets = Packet->Next;
+            QuicLossDetectionOnPacketDiscarded(LossDetection, Packet, TRUE);
+        }
+        if (LossDetection->LostPackets == NULL)
+        {
+            LossDetection->LostPacketsTail = &LossDetection->LostPackets;
+        }
+
+        QuicLossValidate(LossDetection);
+    }
 }
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
