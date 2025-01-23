@@ -822,7 +822,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) void QuicLostPacketsForget(
         {
             QuicTraceLogVerbose(
                 PacketTxForget,
-                "[%c][TX][%llu] Forgetting",
+                "[%c][TX][%llu] Forgetting instead of Resetting",
                 PtkConnPre(Connection),
                 Packet->PacketNumber);
             LossDetection->LostPackets = Packet->Next;
