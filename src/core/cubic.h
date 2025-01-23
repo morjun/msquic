@@ -110,6 +110,9 @@ typedef struct QUIC_CONGESTION_CONTROL_CUBIC {
     //
     uint64_t RecoverySentPacketNumber;
 
+    uint64_t RecoveryEntryTime;
+    uint64_t TotalRecoveryTime;
+
 } QUIC_CONGESTION_CONTROL_CUBIC;
 
 _IRQL_requires_max_(DISPATCH_LEVEL)
