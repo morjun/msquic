@@ -288,13 +288,18 @@ CubicCongestionControlOnCongestionEvent(
     QUIC_CONGESTION_CONTROL_CUBIC* Cubic = &Cc->Cubic;
 
     QUIC_CONNECTION* Connection = QuicCongestionControlGetConnection(Cc);
+    
+    const uint64_t TimeNowUs = CxPlatTimeUs64(); 
+    Cubic -> RecoveryEntryTime = TimeNowUs;
+
     const uint16_t DatagramPayloadLength =
         QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
     QuicTraceEvent(
         ConnCongestionV2,
-        "[conn][%p] Congestion event: IsEcn=%hu",
+        "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
         Connection,
-        Ecn);
+        Ecn,
+        TimeNowUs);
     Connection->Stats.Send.CongestionCount++;
 
     Cubic->IsInRecovery = TRUE;
@@ -470,10 +475,15 @@ CubicCongestionControlOnDataAcknowledged(
             // bit differently here than in TCP: we simply require an ACK for a
             // packet sent after recovery started.
             //
+            if (Cubic->RecoveryEntryTime != 0) {
+                Cubic->TotalRecoveryTime += TimeNowUs - Cubic->RecoveryEntryTime;
+                Cubic->RecoveryEntryTime = 0;
+            }
             QuicTraceEvent(
                 ConnRecoveryExit,
-                "[conn][%p] Recovery complete",
-                Connection);
+                "[conn][%p] Recovery complete, total recovery time: %llu",
+                Connection,
+                Cubic->TotalRecoveryTime);
             Cubic->IsInRecovery = FALSE;
             Cubic->IsInPersistentCongestion = FALSE;
             Cubic->TimeOfCongAvoidStart = TimeNowUs;
