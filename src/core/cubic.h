@@ -109,6 +109,8 @@ typedef struct QUIC_CONGESTION_CONTROL_CUBIC {
     // than this indicates recovery is over.
     //
     uint64_t RecoverySentPacketNumber;
+    uint64_t RecoveryEntryTime;
+    uint64_t TotalRecoveryTime;
 
 } QUIC_CONGESTION_CONTROL_CUBIC;
 
