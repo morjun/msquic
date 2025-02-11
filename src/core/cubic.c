@@ -286,7 +286,7 @@ CubicCongestionControlOnCongestionEvent(
     const uint16_t DatagramPayloadLength =
         QuicPathGetDatagramPayloadSize(&Connection->Paths[0]);
     QuicTraceEvent(
-        ConnCongestionV2,
+        ConnCongestionV2WithTime,
         "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
         Connection,
         Ecn,
@@ -449,7 +449,7 @@ CubicCongestionControlOnDataAcknowledged(
                 Cubic->RecoveryEntryTime = 0;
             }
             QuicTraceEvent(
-                ConnRecoveryExit,
+                ConnRecoveryExitWithTime,
                 "[conn][%p] Recovery complete, total recovery time: %llu",
                 Connection,
                 Cubic->TotalRecoveryTime);

@@ -1087,6 +1087,26 @@
       ],
       "macroName": "QuicTraceEvent"
     },
+    "ConnCongestionV2WithTime": {
+      "ModuleProperites": {},
+      "TraceString": "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
+      "UniqueId": "ConnCongestionV2WithTime",
+      "splitArgs": [
+        {
+          "DefinationEncoding": "p",
+          "MacroVariableName": "arg2"
+        },
+        {
+          "DefinationEncoding": "hu",
+          "MacroVariableName": "arg3"
+        },
+        {
+          "DefinationEncoding": "llu",
+          "MacroVariableName": "arg4"
+        }
+      ],
+      "macroName": "QuicTraceEvent"
+    },
     "ConnCreated": {
       "ModuleProperites": {},
       "TraceString": "[conn][%p] Created, IsServer=%hhu, CorrelationId=%llu",
@@ -1907,6 +1927,22 @@
         {
           "DefinationEncoding": "p",
           "MacroVariableName": "arg2"
+        }
+      ],
+      "macroName": "QuicTraceEvent"
+    },
+    "ConnRecoveryExitWithTime": {
+      "ModuleProperites": {},
+      "TraceString": "[conn][%p] Recovery complete, total recovery time: %llu",
+      "UniqueId": "ConnRecoveryExitWithTime",
+      "splitArgs": [
+        {
+          "DefinationEncoding": "p",
+          "MacroVariableName": "arg2"
+        },
+        {
+          "DefinationEncoding": "llu",
+          "MacroVariableName": "arg3"
         }
       ],
       "macroName": "QuicTraceEvent"
