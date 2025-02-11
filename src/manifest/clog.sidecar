@@ -7980,6 +7980,22 @@
       ],
       "macroName": "QuicTraceLogVerbose"
     },
+    "PacketTxForgetInstead": {
+      "ModuleProperites": {},
+      "TraceString": "[%c][TX][%llu] Forgetting instead of Resetting",
+      "UniqueId": "PacketTxForgetInstead",
+      "splitArgs": [
+        {
+          "DefinationEncoding": "c",
+          "MacroVariableName": "arg2"
+        },
+        {
+          "DefinationEncoding": "llu",
+          "MacroVariableName": "arg3"
+        }
+      ],
+      "macroName": "QuicTraceLogVerbose"
+    },
     "PacketTxLostDiscarded": {
       "ModuleProperites": {},
       "TraceString": "[%c][TX][%llu] Thrown away on shutdown (lost packet)",

@@ -821,7 +821,7 @@ _IRQL_requires_max_(PASSIVE_LEVEL) void QuicLostPacketsForget(
             //    CxPlatTimeDiff64(Packet->SentTime, TimeNow) > TwoPto)
         {
             QuicTraceLogVerbose(
-                PacketTxForget,
+                PacketTxForgetInstead,
                 "[%c][TX][%llu] Forgetting instead of Resetting",
                 PtkConnPre(Connection),
                 Packet->PacketNumber);
