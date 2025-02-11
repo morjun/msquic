@@ -407,8 +407,8 @@ CubicCongestionControlOnDataSent(
 
                 if (packetCount < 10 && QuicConnIsServer(Connection) && (Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets)) {
                     printf("Cwnd After Decrease: %d, InitialWindowPackets: %d\n", Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10, DatagramPayloadLength * Cubic->InitialWindowPackets);
-                    // CubicCongestionControlReset(Cc, FALSE);
-                    QuicLostPacketsForget(Connection);
+                    CubicCongestionControlReset(Cc, FALSE);
+                    // QuicLostPacketsForget(Connection);
                     printf("Cubic reset based on spin count: %d\n", packetCount);
                 }
             packetCount = 0;
@@ -789,9 +789,9 @@ CubicCongestionControlOnDataLost(
         }
 
         if (rack_ratio > 0.5 && QuicConnIsServer(Connection) && Cubic->CongestionWindow * TEN_TIMES_BETA_CUBIC / 10 < DatagramPayloadLength * Cubic->InitialWindowPackets) {
-            // CubicCongestionControlReset(Cc, FALSE);
-            // printf("Cubic reset\n");
-            QuicLostPacketsForget(Connection);
+            CubicCongestionControlReset(Cc, FALSE);
+            printf("Cubic reset\n");
+            // QuicLostPacketsForget(Connection);
         }
     }
 
