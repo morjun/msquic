@@ -13849,6 +13849,11 @@
         "EncodingString": "[conn][%p] Congestion event: IsEcn=%hu"
       },
       {
+        "UniquenessHash": "9b593b45-54da-104c-0610-28c717a4c9e1",
+        "TraceID": "ConnCongestionV2WithTime",
+        "EncodingString": "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu"
+      },
+      {
         "UniquenessHash": "aed1e684-1268-09f6-9232-3b0ad19349f5",
         "TraceID": "ConnCreated",
         "EncodingString": "[conn][%p] Created, IsServer=%hhu, CorrelationId=%llu"
@@ -14062,6 +14067,11 @@
         "UniquenessHash": "5eef16d4-a574-2e5c-62c1-d561f0040322",
         "TraceID": "ConnRecoveryExit",
         "EncodingString": "[conn][%p] Recovery complete"
+      },
+      {
+        "UniquenessHash": "8f264c3b-d5b5-3bb5-f41e-7a1c9765237b",
+        "TraceID": "ConnRecoveryExitWithTime",
+        "EncodingString": "[conn][%p] Recovery complete, total recovery time: %llu"
       },
       {
         "UniquenessHash": "acc96e76-ae1e-91d0-d525-216dedbaf2f0",

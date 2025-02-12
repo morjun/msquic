@@ -106,19 +106,21 @@ tracepoint(CLOG_CUBIC_C, ConnHyStartStateChange , arg2, arg3, arg4, arg5);\
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnCongestionV2
-// [conn][%p] Congestion event: IsEcn=%hu
+// Decoder Ring for ConnCongestionV2WithTime
+// [conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu
 // QuicTraceEvent(
-        ConnCongestionV2,
-        "[conn][%p] Congestion event: IsEcn=%hu",
+        ConnCongestionV2WithTime,
+        "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
         Connection,
-        Ecn);
+        Ecn,
+        TimeNowUs);
 // arg2 = arg2 = Connection = arg2
 // arg3 = arg3 = Ecn = arg3
+// arg4 = arg4 = TimeNowUs = arg4
 ----------------------------------------------------------*/
-#ifndef _clog_4_ARGS_TRACE_ConnCongestionV2
-#define _clog_4_ARGS_TRACE_ConnCongestionV2(uniqueId, encoded_arg_string, arg2, arg3)\
-tracepoint(CLOG_CUBIC_C, ConnCongestionV2 , arg2, arg3);\
+#ifndef _clog_5_ARGS_TRACE_ConnCongestionV2WithTime
+#define _clog_5_ARGS_TRACE_ConnCongestionV2WithTime(uniqueId, encoded_arg_string, arg2, arg3, arg4)\
+tracepoint(CLOG_CUBIC_C, ConnCongestionV2WithTime , arg2, arg3, arg4);\
 
 #endif
 
@@ -144,17 +146,19 @@ tracepoint(CLOG_CUBIC_C, ConnPersistentCongestion , arg2);\
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnRecoveryExit
-// [conn][%p] Recovery complete
+// Decoder Ring for ConnRecoveryExitWithTime
+// [conn][%p] Recovery complete, total recovery time: %llu
 // QuicTraceEvent(
-                ConnRecoveryExit,
-                "[conn][%p] Recovery complete",
-                Connection);
+                ConnRecoveryExitWithTime,
+                "[conn][%p] Recovery complete, total recovery time: %llu",
+                Connection,
+                Cubic->TotalRecoveryTime);
 // arg2 = arg2 = Connection = arg2
+// arg3 = arg3 = Cubic->TotalRecoveryTime = arg3
 ----------------------------------------------------------*/
-#ifndef _clog_3_ARGS_TRACE_ConnRecoveryExit
-#define _clog_3_ARGS_TRACE_ConnRecoveryExit(uniqueId, encoded_arg_string, arg2)\
-tracepoint(CLOG_CUBIC_C, ConnRecoveryExit , arg2);\
+#ifndef _clog_4_ARGS_TRACE_ConnRecoveryExitWithTime
+#define _clog_4_ARGS_TRACE_ConnRecoveryExitWithTime(uniqueId, encoded_arg_string, arg2, arg3)\
+tracepoint(CLOG_CUBIC_C, ConnRecoveryExitWithTime , arg2, arg3);\
 
 #endif
 

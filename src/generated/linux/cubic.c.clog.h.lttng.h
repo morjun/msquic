@@ -111,23 +111,27 @@ TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnHyStartStateChange,
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnCongestionV2
-// [conn][%p] Congestion event: IsEcn=%hu
+// Decoder Ring for ConnCongestionV2WithTime
+// [conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu
 // QuicTraceEvent(
-        ConnCongestionV2,
-        "[conn][%p] Congestion event: IsEcn=%hu",
+        ConnCongestionV2WithTime,
+        "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
         Connection,
-        Ecn);
+        Ecn,
+        TimeNowUs);
 // arg2 = arg2 = Connection = arg2
 // arg3 = arg3 = Ecn = arg3
+// arg4 = arg4 = TimeNowUs = arg4
 ----------------------------------------------------------*/
-TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnCongestionV2,
+TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnCongestionV2WithTime,
     TP_ARGS(
         const void *, arg2,
-        unsigned short, arg3), 
+        unsigned short, arg3,
+        unsigned long long, arg4), 
     TP_FIELDS(
         ctf_integer_hex(uint64_t, arg2, (uint64_t)arg2)
         ctf_integer(unsigned short, arg3, arg3)
+        ctf_integer(uint64_t, arg4, arg4)
     )
 )
 
@@ -153,19 +157,23 @@ TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnPersistentCongestion,
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnRecoveryExit
-// [conn][%p] Recovery complete
+// Decoder Ring for ConnRecoveryExitWithTime
+// [conn][%p] Recovery complete, total recovery time: %llu
 // QuicTraceEvent(
-                ConnRecoveryExit,
-                "[conn][%p] Recovery complete",
-                Connection);
+                ConnRecoveryExitWithTime,
+                "[conn][%p] Recovery complete, total recovery time: %llu",
+                Connection,
+                Cubic->TotalRecoveryTime);
 // arg2 = arg2 = Connection = arg2
+// arg3 = arg3 = Cubic->TotalRecoveryTime = arg3
 ----------------------------------------------------------*/
-TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnRecoveryExit,
+TRACEPOINT_EVENT(CLOG_CUBIC_C, ConnRecoveryExitWithTime,
     TP_ARGS(
-        const void *, arg2), 
+        const void *, arg2,
+        unsigned long long, arg3), 
     TP_FIELDS(
         ctf_integer_hex(uint64_t, arg2, (uint64_t)arg2)
+        ctf_integer(uint64_t, arg3, arg3)
     )
 )
 
