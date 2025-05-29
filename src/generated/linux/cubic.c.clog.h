@@ -14,6 +14,10 @@
 #include "cubic.c.clog.h.lttng.h"
 #endif
 #include <lttng/tracepoint-event.h>
+#ifndef _clog_MACRO_QuicTraceLogVerbose
+#define _clog_MACRO_QuicTraceLogVerbose  1
+#define QuicTraceLogVerbose(a, ...) _clog_CAT(_clog_ARGN_SELECTOR(__VA_ARGS__), _clog_CAT(_,a(#a, __VA_ARGS__)))
+#endif
 #ifndef _clog_MACRO_QuicTraceLogConnVerbose
 #define _clog_MACRO_QuicTraceLogConnVerbose  1
 #define QuicTraceLogConnVerbose(a, ...) _clog_CAT(_clog_ARGN_SELECTOR(__VA_ARGS__), _clog_CAT(_,a(#a, __VA_ARGS__)))
@@ -25,6 +29,26 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+/*----------------------------------------------------------
+// Decoder Ring for PacketTxForgetInstead
+// [%c][TX][%llu] Forgetting instead of Resetting
+// QuicTraceLogVerbose(
+                PacketTxForgetInstead,
+                "[%c][TX][%llu] Forgetting instead of Resetting",
+                PtkConnPre(Connection),
+                Packet->PacketNumber);
+// arg2 = arg2 = PtkConnPre(Connection) = arg2
+// arg3 = arg3 = Packet->PacketNumber = arg3
+----------------------------------------------------------*/
+#ifndef _clog_4_ARGS_TRACE_PacketTxForgetInstead
+#define _clog_4_ARGS_TRACE_PacketTxForgetInstead(uniqueId, encoded_arg_string, arg2, arg3)\
+tracepoint(CLOG_CUBIC_C, PacketTxForgetInstead , arg2, arg3);\
+
+#endif
+
+
+
+
 /*----------------------------------------------------------
 // Decoder Ring for IndicateDataAcked
 // [conn][%p] Indicating QUIC_CONNECTION_EVENT_NETWORK_STATISTICS [BytesInFlight=%u,PostedBytes=%llu,IdealBytes=%llu,SmoothedRTT=%llu,CongestionWindow=%u,Bandwidth=%llu]
@@ -106,19 +130,21 @@ tracepoint(CLOG_CUBIC_C, ConnHyStartStateChange , arg2, arg3, arg4, arg5);\
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnCongestionV2
-// [conn][%p] Congestion event: IsEcn=%hu
+// Decoder Ring for ConnCongestionV2WithTime
+// [conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu
 // QuicTraceEvent(
-        ConnCongestionV2,
-        "[conn][%p] Congestion event: IsEcn=%hu",
+        ConnCongestionV2WithTime,
+        "[conn][%p] Congestion event: IsEcn=%hu, EntryTime=%llu",
         Connection,
-        Ecn);
+        Ecn,
+        TimeNowUs);
 // arg2 = arg2 = Connection = arg2
 // arg3 = arg3 = Ecn = arg3
+// arg4 = arg4 = TimeNowUs = arg4
 ----------------------------------------------------------*/
-#ifndef _clog_4_ARGS_TRACE_ConnCongestionV2
-#define _clog_4_ARGS_TRACE_ConnCongestionV2(uniqueId, encoded_arg_string, arg2, arg3)\
-tracepoint(CLOG_CUBIC_C, ConnCongestionV2 , arg2, arg3);\
+#ifndef _clog_5_ARGS_TRACE_ConnCongestionV2WithTime
+#define _clog_5_ARGS_TRACE_ConnCongestionV2WithTime(uniqueId, encoded_arg_string, arg2, arg3, arg4)\
+tracepoint(CLOG_CUBIC_C, ConnCongestionV2WithTime , arg2, arg3, arg4);\
 
 #endif
 
@@ -144,17 +170,19 @@ tracepoint(CLOG_CUBIC_C, ConnPersistentCongestion , arg2);\
 
 
 /*----------------------------------------------------------
-// Decoder Ring for ConnRecoveryExit
-// [conn][%p] Recovery complete
+// Decoder Ring for ConnRecoveryExitWithTime
+// [conn][%p] Recovery complete, total recovery time: %llu
 // QuicTraceEvent(
-                ConnRecoveryExit,
-                "[conn][%p] Recovery complete",
-                Connection);
+                ConnRecoveryExitWithTime,
+                "[conn][%p] Recovery complete, total recovery time: %llu",
+                Connection,
+                Cubic->TotalRecoveryTime);
 // arg2 = arg2 = Connection = arg2
+// arg3 = arg3 = Cubic->TotalRecoveryTime = arg3
 ----------------------------------------------------------*/
-#ifndef _clog_3_ARGS_TRACE_ConnRecoveryExit
-#define _clog_3_ARGS_TRACE_ConnRecoveryExit(uniqueId, encoded_arg_string, arg2)\
-tracepoint(CLOG_CUBIC_C, ConnRecoveryExit , arg2);\
+#ifndef _clog_4_ARGS_TRACE_ConnRecoveryExitWithTime
+#define _clog_4_ARGS_TRACE_ConnRecoveryExitWithTime(uniqueId, encoded_arg_string, arg2, arg3)\
+tracepoint(CLOG_CUBIC_C, ConnRecoveryExitWithTime , arg2, arg3);\
 
 #endif
 
